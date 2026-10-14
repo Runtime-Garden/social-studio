@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#F6F8F3" />
+<title>Social Studio · Runtime Garden</title>
+<link rel="icon" type="image/svg+xml" href="assets/runtime-garden-favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="studio.css" />
+</head>
+<body>
+<div class="shell">
+<header class="topbar">
+  <div class="brand"><img src="assets/runtime-garden-mark.svg" alt="" width="36" height="36" /><span><b>runtime garden</b><small>SOCIAL STUDIO <span class="soft-tag">v2.0</span></small></span></div>
+  <div class="top-center"><span class="top-indicator"></span><input id="projectName" aria-label="Project name" maxlength="100" value="Untitled collection" /><span class="save-indicator" id="saveStatus">Saved locally</span></div>
+  <div class="top-actions">
+    <button class="ghost" id="undoBtn" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button><button class="ghost" id="redoBtn" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+    <button class="outline" id="importBtn">Import project</button><button class="outline" id="saveBtn">Save .json</button>
+    <button class="primary" id="exportBtn"><span>↓</span> Export post</button>
+  </div>
+</header>
+<aside class="sidebar left-sidebar">
+  <div class="side-tabs"><button class="selected" data-left="templates">Templates</button><button data-left="series">Series</button><button data-left="slides">Slides <span id="slideCount">1</span></button><button data-left="assets">Assets</button></div>
+  <section id="templatesPanel" class="left-panel"><div class="section-kicker">RG DESIGN SYSTEM / 02</div><h2>Start with a layout.</h2><p class="section-hint">A curated editorial system for technical content, not generic social graphics.</p><label class="search-wrap"><span>⌕</span><input id="templateSearch" placeholder="Search 40 layouts…" autocomplete="off" aria-label="Search templates" /></label><div id="filterChips" class="chips"><button class="active" data-filter="all">All</button><button data-filter="editorial">Editorial</button><button data-filter="technical">Technical</button><button data-filter="social">Social</button></div><div id="templateGrid" class="template-grid"></div></section>
+  <section id="seriesPanel" class="left-panel hidden"><div class="section-kicker">THEME SERIES / 12 COLLECTIONS</div><h2>One story, many frames.</h2><p class="section-hint">Choose a connected theme. Every frame uses the same brand colors, recurring motif, pagination, and editorial rhythm — but has its own layout.</p><div class="series-benefit"><span>01 · Opening</span><span>02–05 · Narrative</span><span>06 · Closing</span></div><div id="seriesGrid" class="series-grid"></div><p class="tiny-note">Selecting a pack replaces the current collection after confirmation. Save your project JSON first.</p></section>
+  <section id="slidesPanel" class="left-panel hidden"><div class="section-kicker">CAROUSEL BUILDER</div><h2>Your sequence.</h2><p class="section-hint">Create a story, then export every frame in one ZIP.</p><div id="slidesList" class="slides-list"></div><button class="dashed-btn" id="addSlideBtn">＋ Add new slide</button><button class="dashed-btn" id="duplicateSlideBtn">⧉ Duplicate current</button></section>
+  <section id="assetsPanel" class="left-panel hidden"><div class="section-kicker">MEDIA &amp; BRAND</div><h2>Asset library.</h2><p class="section-hint">Private, local image uploads and the original v2 brand identity.</p><div class="assets-logo"><img src="assets/runtime-garden-logo-light.svg" alt="Runtime Garden official logo v2" /><span>Official logo v2 · protected</span></div><label class="upload-area">＋ Add an image<input type="file" id="imageUpload" accept="image/png,image/jpeg,image/webp" hidden /></label><p class="tiny-note">PNG, JPG or WebP · up to 8 MB. Files stay in your browser / export project.</p><div id="assetGallery" class="asset-gallery"></div><button class="text-btn" id="removeImageBtn">Remove image from current slide</button></section>
+  <div class="left-bottom"><div class="brand-note"><div class="tiny-dot"></div><b>Brand integrity</b><p>Locked colors, original SVG logos, deliberate typography, clear space and content-first layouts.</p></div><a class="plain-link" href="docs/Runtime_Garden_Design_Brief.md" target="_blank" rel="noopener">Design source ↗</a></div>
+</aside>
+<main class="workspace">
+  <div class="work-head"><div><div class="section-kicker">CANVAS / LIVE PREVIEW</div><h1 id="workTitle">The Editorial Cover</h1><div class="work-sub" id="workSubtitle">An adaptable composition for thoughtful engineering stories.</div></div><div class="workspace-badges"><span id="formatPill">1080 × 1350</span><span class="badge-subtle">ORIGINAL BRAND V2</span></div></div>
+  <div class="quick-size-bar"><span class="quick-size-label">CANVAS SIZE</span><select id="quickFormat" aria-label="Canvas size"></select><button class="light-btn" id="syncAllFormats" title="Make every slide use the selected size">↔ Apply to all</button><span class="quick-size-hint">Resize without changing your content.</span></div>
+  <div class="preview-stage" id="previewStage"><div class="stage-pattern"></div><div class="canvas-holder"><canvas id="postCanvas" width="1080" height="1350" role="img" aria-label="Live social media composition preview"></canvas></div></div>
+  <div class="canvas-toolbar"><div><button class="light-btn" id="prevSlideBtn">←</button><span class="counter" id="slideIndicator">01 / 01</span><button class="light-btn" id="nextSlideBtn">→</button><span class="muted-small">← → to navigate slides outside text inputs</span></div><div class="toolbar-right"><button class="light-btn" id="zoomOutBtn">−</button><span id="zoomVal">Fit</span><button class="light-btn" id="zoomInBtn">+</button><button class="light-btn" id="fitBtn">Fit</button><button class="light-btn" id="gridBtn">Guides: off</button></div></div>
+  <div class="workspace-footer"><span><span class="status-bullet"></span>Everything renders locally. No accounts, uploads, or backend.</span><span id="canvasInfo">PNG-ready · brand-safe canvas</span></div>
+</main>
+<aside class="sidebar inspector"><div class="inspector-header"><div class="section-kicker">DESIGN INSPECTOR</div><h2>Make it yours.</h2><p>Adjust the story. Preserve the identity.</p></div>
+<div class="inspector-tabs"><button data-inspect="content" class="selected">Content</button><button data-inspect="style">Style</button><button data-inspect="publish">Publish</button></div>
+<div id="contentInspector" class="inspector-content"></div><div id="styleInspector" class="inspector-content hidden"></div><div id="publishInspector" class="inspector-content hidden"></div>
+<div class="inspector-bottom"><button class="primary full" id="quickExportBtn">↓ Download PNG</button><div class="inspector-footnote">Brand palette and official logo are intentionally non-editable.</div></div></aside>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<input type="file" id="projectImportFile" accept="application/json,.json" hidden />
+<div class="modal-backdrop hidden" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportTitle"><div class="modal"><div class="modal-header"><div><div class="section-kicker">EXPORT / 01</div><h2 id="exportTitle">Publish-ready assets.</h2></div><button class="icon-cross" id="closeExportBtn" aria-label="Close export options">×</button></div><p>Your canvas will be exported at full pixel resolution without a watermark.</p><div class="export-grid"><button data-export="png"><span>▣</span><b>PNG image</b><small>Lossless · current slide</small></button><button data-export="jpeg"><span>▤</span><b>JPEG image</b><small>Compressed · current slide</small></button><button data-export="webp"><span>◈</span><b>WebP image</b><small>Compact · current slide</small></button><button data-export="zip"><span>▦</span><b>Carousel ZIP</b><small>All slides · PNG images</small></button><button data-export="project"><span>⧉</span><b>Project JSON</b><small>Editable, restorable state</small></button><button data-export="caption"><span>≡</span><b>Copy caption</b><small>Caption + hashtags</small></button></div><div class="batch-export"><div class="section-kicker">MULTI-SIZE COLLECTION EXPORT</div><p>Export the entire carousel into separate PNG folders for multiple platforms without changing this project.</p><select id="exportFormats" size="5" multiple aria-label="Select export formats"></select><button class="primary full" data-export="bundle">↓ Export selected sizes as ZIP</button><small>Hold Ctrl / ⌘ to select multiple sizes. Custom dimensions are exported through the regular ZIP.</small></div><div class="modal-foot">Offline-friendly editor. Image fonts use system fallbacks if web fonts are not available.</div></div></div>
+<script src="assets/brand-embedded.js"></script>
+<script src="studio.js"></script>
+</body>
+</html>
