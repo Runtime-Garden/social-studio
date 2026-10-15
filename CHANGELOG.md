@@ -381,6 +381,17 @@ has zero online dependencies. Full `npm run verify`: smoke `[40, 16, 14336]`,
 
 ### P2 — Calendar, ops viewers UI and Compose dev stack (commits `721774b`, `3618e81`, `f908bb0`, `ae1770d`, `5c68877`) — **P2 complete**
 
+**Fixed (local first-run):**
+
+- `openDatabase` creates the parent directory of a file database path.
+  The documented default `RG_DB_PATH=data/studio.sqlite` crashed with
+  `unable to open database file` on any first run until `data/` existed —
+  the server opens the database before any script creates the directory.
+  New unit test written RED (`unable to open database file`) → GREEN,
+  commit `50b2025`. Verified by running the bundled dist locally: server
+  starts, `data/` is created, health endpoints green, login succeeds,
+  inbox/studio/calendar pages serve.
+
 **Added:**
 
 - `packages/storage/src/repos/scheduling.ts`: durable job leases (single
