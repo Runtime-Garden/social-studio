@@ -29,6 +29,8 @@ declare global {
   }>;
 
   function NEW_SLIDE(id: string): StudioSlide;
+  function refresh(): void;
+  function getCachedImage(src: string): HTMLImageElement | null;
   function frame(
     ctx: CanvasRenderingContext2D,
     slide: StudioSlide,

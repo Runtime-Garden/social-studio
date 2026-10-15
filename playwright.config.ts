@@ -21,6 +21,13 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      // Golden-image baselines are engine-specific and run on every engine
+      // that can start on this host; the rest of the suite stays on chromium.
+      name: 'firefox',
+      testMatch: /golden\.spec\.ts/,
+      use: { ...devices['Desktop Firefox'] },
+    },
   ],
   webServer: {
     command: `node tools/serve.cjs . ${PORT}`,

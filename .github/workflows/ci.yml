@@ -46,9 +46,9 @@ jobs:
         run: git diff --exit-code -- Runtime_Garden_Social_Studio_v2_Standalone.html packages/studio-core/dist
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox
 
-      - name: Real-browser tests (Chromium)
+      - name: Real-browser tests (Chromium full suite + Firefox golden snapshots)
         run: npm run test:browser
 
       - name: Upload Playwright artifacts on failure
