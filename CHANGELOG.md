@@ -219,3 +219,28 @@ with tests; the shared builder emits importable projects; the offline edition
 has zero online dependencies. Full `npm run verify`: smoke `[40, 16, 14336]`,
 70 unit assertions, typecheck OK, 28/28 Playwright, standalone sha256
 `d7501b4d…` byte-identical.
+
+### P2 — Online app foundation: domain + SQLite storage (commit `776f941`)
+
+**Added:**
+
+- `packages/domain`: content + publication state machines (explicit
+  transition tables; `buffer_sent` only via `buffer_scheduled` after remote
+  readback), approval proof (canonical JSON → SHA-256, per-channel binding,
+  `verifyApproval`), policy schema (blueprint 10.4 defaults with
+  `publishing_enabled` / `autonomy_enabled` hard `false`).
+- `packages/storage`: `node:sqlite` connection factory (foreign keys ON,
+  busy timeout, WAL on file DBs), forward-only transactional migration
+  runner, `migrations/0001_init.sql` with the full minimum domain contract
+  (24 tables), and repositories: users, sessions (hash-at-rest opaque
+  tokens), studio projects (immutable revisions +
+  `OptimisticConcurrencyError`), audit events, policy settings.
+- **Zero native dependencies** for the storage layer.
+
+**Tested (evidence in this repository):**
+
+- 30 new unit assertions RED→GREEN; combined mutation check failed exactly
+  the three aimed tests (sabotaged `submitting -> buffer_sent`, removed
+  canonical key sorting, skipped optimistic lock); all reverted.
+- Full `npm run verify` green: smoke `[40, 16, 14336]`; **100 unit
+  assertions**; typecheck OK; 28/28 Playwright; standalone byte-identical.

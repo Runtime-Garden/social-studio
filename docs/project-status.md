@@ -169,8 +169,8 @@ standalone sha256 `d7501b4d…` byte-identical.
 |---|---|
 | Planned | yes — `.opencode/RUNTIME_GARDEN_SOCIAL_STUDIO_V3_OPENCODE_IMPLEMENTATION_BLUEPRINT.md` |
 | Designed | yes — blueprint sections 4–14 |
-| Coded | no (skeleton only: TS toolchain, `packages/studio-core` extraction — registry + renderer + builder, CI) |
-| Tested | no |
+| Coded | in progress — P2 slice 1 (domain state machines, approval proof, SQLite storage + repos) committed `776f941` |
+| Tested | partial — 100 unit assertions total, incl. 30 new P2 assertions (state machines, approval hash, migrations, repos); no online API yet |
 | Deployed | no |
 | Live-verified | no |
 
@@ -183,6 +183,37 @@ standalone sha256 `d7501b4d…` byte-identical.
   a provider abstraction with fixture mode; live generation **BLOCKED**.
 - VPS deployment access — not touched. Deployment is **not planned** without
   explicit owner approval (blueprint mandates staging evidence first).
+
+## P2 — Online authenticated app + persistence (in progress)
+
+Slice 1 (commit `776f941`, branch `v3`): **domain + storage foundation**.
+
+- `packages/domain`: the content editorial and per-channel publication state
+  machines as explicit transition tables (`submitting -> buffer_sent` is
+  structurally impossible — remote facts require remote readback);
+  the approval proof (canonical JSON → SHA-256; source ids are a set, asset
+  hashes a sequence; per-channel binding); and the policy schema with
+  blueprint 10.4 defaults where `publishing_enabled` and `autonomy_enabled`
+  are hard `false`.
+- `packages/storage`: SQLite via the Node built-in `node:sqlite` driver —
+  **zero native dependencies** (DatabaseSync verified on Node 24.21, SQLite
+  3.53.4). `openDatabase()` enforces foreign keys, a 5 s busy timeout and WAL
+  on file databases; `applyMigrations()` is a forward-only transactional
+  runner; `migrations/0001_init.sql` implements the full blueprint-section-9
+  contract (24 tables with CHECK-constrained states and UNIQUE
+  identity/idempotency keys).
+- Repositories: users; sessions (opaque token, only its SHA-256 stored,
+  expiry + revocation + last-seen); studio projects (**immutable revisions**
+  with `revision_sha` and `OptimisticConcurrencyError` on stale writers);
+  audit events (append-only); policy settings (validated overrides over the
+  safe defaults).
+
+**Evidence (executed):** 30 new unit assertions written RED→GREEN; combined
+mutation check failed exactly the three aimed tests (sabotaged
+`submitting -> buffer_sent` edge, removed canonical key sorting, skipped the
+optimistic lock), all reverted; full `npm run verify` green — smoke
+`[40, 16, 14336]`, **100 unit assertions**, typecheck OK, 28/28 Playwright,
+standalone sha256 `d7501b4d…` byte-identical.
 
 ## Evidence environment (P0)
 
