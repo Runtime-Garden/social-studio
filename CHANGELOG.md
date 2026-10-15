@@ -136,3 +136,30 @@ custom-dimension browser coverage.
 - WebKit cannot start on the reference host (missing system libraries; no
   sudo for `--with-deps`) — documented environment blocker; CI installs
   chromium+firefox with dependencies.
+
+### P1 — Canvas `frame` renderer extraction (commit `2bcbc2d`)
+
+**Refactored (output-neutral, evidence below):**
+
+- The Design-Kit-v2 palette (`C`), drawing helpers and `frame` moved **verbatim**
+  (scripted line surgery) from `studio.js` into
+  `packages/studio-core/src/render.ts` (25,996 bytes; `// @ts-nocheck` until
+  deliberate typing, same ruling as the registry).
+- Renderer is DOM-free via dependency injection: `configureRenderer({getLogo,
+  getImage})`; `studio.js` wires the offline adapter (`logoImages`,
+  `getCachedImage`).
+- `packages/studio-core/src/index.ts` is the single bundle entry
+  (re-exports registry + render); `studio.js` reduced 325 → 187 lines.
+
+**Tested (evidence in this repository):**
+
+- 3 contract tests (`render.test.ts`) written test-first (RED watched), pinning
+  the dependency-injection contract.
+- Full `npm run verify` green: smoke `[40, 16, 14336]`; 50 unit assertions;
+  typecheck OK; 25/25 Playwright (18 chromium incl. 7 golden baselines + 7
+  firefox golden baselines); standalone rebuilt (150,171 bytes, sha256
+  `4d39e81d…`); P0 evidence screenshots byte-identical after rebuild —
+  the renderer extraction changed no rendered output.
+
+**Still to do (P1):** explicit schema modules + v1→v2 migration functions;
+undo/redo, large-text and custom-dimension browser coverage.
