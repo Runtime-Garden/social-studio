@@ -8,7 +8,9 @@ const $ = id => document.getElementById(id);
    RGStudioCore.configureRenderer(). */
 /* Pure registry extracted to packages/studio-core (P1, output-neutral).
    Loaded as a classic script before this file (see index.html); the standalone
-   build inlines packages/studio-core/dist/studio-core.js the same way. */
+   build inlines packages/studio-core/dist/studio-core.js the same way.
+   Project import delegates to RGStudioCore.restoreProject (explicit schema
+   markers + v1→v2 migrations, P1). */
 const { FORMATS, getFormat, SAMPLES, SERIES_PACKS, DEFAULTS, SERIES_CONTENT, clamp, uid, NEW_SLIDE, palette, frame } = RGStudioCore;
 let app={name:'Untitled collection',seriesPack:'none',slides:[NEW_SLIDE('cover')],selected:0};
 let history=[],future=[],historyStart=null,saveTimer=null,zoom=1,showGuides=false,leftTab='templates',inspectorTab='content',filter='all',assetCache=new Map(),renderTicket=0,logoImages={};
@@ -20,9 +22,7 @@ function toast(message){const el=$('toast');el.textContent=message;el.classList.
 function snapshot(){return JSON.stringify(app)}
 function remember(){history.push(snapshot());if(history.length>70)history.shift();future=[];updateHistory()}
 function updateHistory(){$('undoBtn').disabled=!history.length;$('redoBtn').disabled=!future.length}
-function restoreFrom(text){const parsed=JSON.parse(text);if(!parsed||!Array.isArray(parsed.slides)||parsed.slides.length<1||parsed.slides.length>100)throw Error('Not a valid Social Studio project.');
-const slides=parsed.slides.map(s=>{if(!s||!SAMPLES.some(t=>t.id===s.id))throw Error('Unknown layout in imported project.');const clean=NEW_SLIDE(s.id);for(const k of Object.keys(clean)){if(!Object.hasOwn(s,k))continue;const v=s[k];if(typeof clean[k]==='string'&&typeof v==='string')clean[k]=v.slice(0,k==='image'?6500000:15000);else if(typeof clean[k]==='number'&&typeof v==='number'&&Number.isFinite(v))clean[k]=v;else if(typeof clean[k]==='boolean'&&typeof v==='boolean')clean[k]=v;else if(k==='image'&&(v===null||typeof v==='string'&&/^data:image\/(png|jpeg|webp);base64,/.test(v)&&v.length<6500000))clean[k]=v;}clean.uid=uid();clean.scale=clamp(clean.scale,.7,1.25);clean.customWidth=clamp(Math.round(clean.customWidth),400,4096);clean.customHeight=clamp(Math.round(clean.customHeight),300,4096);if(!SERIES_PACKS.some(p=>p.id===clean.series))clean.series='none';clean.imagePosition=clamp(clean.imagePosition,0,100);return clean});
-return {name:String(parsed.name||'Imported collection').slice(0,100),seriesPack:SERIES_PACKS.some(p=>p.id===parsed.seriesPack)?parsed.seriesPack:'none',selected:clamp(Number(parsed.selected)||0,0,slides.length-1),slides}}
+function restoreFrom(text){return RGStudioCore.restoreProject(text)}
 function undo(){if(!history.length)return;future.push(snapshot());app=restoreFrom(history.pop());refresh();saveSoon();updateHistory()}
 function redo(){if(!future.length)return;history.push(snapshot());app=restoreFrom(future.pop());refresh();saveSoon();updateHistory()}
 function saveSoon(){clearTimeout(saveTimer);$('saveStatus').textContent='Saving…';saveTimer=setTimeout(()=>{try{localStorage.setItem('rg-social-studio-v1',snapshot());$('saveStatus').textContent='Saved locally'}catch(e){$('saveStatus').textContent='Not saved';toast('Browser storage is full. Download the project JSON to keep your work.')}},650)}

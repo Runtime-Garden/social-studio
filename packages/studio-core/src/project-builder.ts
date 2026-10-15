@@ -14,9 +14,10 @@
  */
 
 import { NEW_SLIDE, SAMPLES, SERIES_PACKS } from './registry.js';
+import { PROJECT_FORMAT, PROJECT_FORMAT_VERSION } from './schema.js';
 
 export const SUPPORTED_BRIEF_SCHEMA_VERSION = 1;
-export const PROJECT_FORMAT_VERSION = 2;
+export { PROJECT_FORMAT_VERSION };
 export const CONFIDENCE_LABELS = ['verified', 'uncertain', 'unsupported'] as const;
 export type ConfidenceLabel = (typeof CONFIDENCE_LABELS)[number];
 
@@ -103,7 +104,7 @@ export interface StudioSlide {
 }
 
 export interface StudioProject {
-  format: 'runtime-garden-social-studio';
+  format: typeof PROJECT_FORMAT;
   version: typeof PROJECT_FORMAT_VERSION;
   name: string;
   seriesPack: string;
@@ -390,7 +391,7 @@ export function buildStudioProject(input: unknown, options?: StudioBuilderOption
   }
 
   return {
-    format: 'runtime-garden-social-studio',
+    format: PROJECT_FORMAT,
     version: PROJECT_FORMAT_VERSION,
     name: name.slice(0, CONTENT_BRIEF_LIMITS.projectName),
     seriesPack,

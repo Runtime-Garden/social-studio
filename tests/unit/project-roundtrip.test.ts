@@ -196,6 +196,54 @@ describe('hostile and malformed project inputs', () => {
   });
 });
 
+describe('explicit schema versioning and v1 migration (P1, blueprint 8.1 item 2)', () => {
+  const v1 = JSON.parse(
+    readFileSync(path.join(repoRoot, 'examples', 'engineering-cycle-carousel.rgstudio.json'), 'utf8'),
+  ) as ExampleFile;
+
+  it('rejects unsupported version markers through the real editor import path', () => {
+    expect(() =>
+      restore(
+        JSON.stringify({
+          format: 'runtime-garden-social-studio',
+          version: 99,
+          slides: [{ id: 'cover' }],
+        }),
+      ),
+    ).toThrow(/Unsupported project version: 99/);
+  });
+
+  it('rejects foreign format markers', () => {
+    expect(() =>
+      restore(
+        JSON.stringify({ format: 'some-other-tool', version: 2, slides: [{ id: 'cover' }] }),
+      ),
+    ).toThrow(/format marker/);
+  });
+
+  it('still accepts versionless autosave payloads (localStorage shape)', () => {
+    const restored = restore(
+      JSON.stringify({ name: 'Autosave', selected: 0, slides: [{ id: 'cover', title: 'Draft' }] }),
+    );
+    expect(restored.name).toBe('Autosave');
+    expect(restored.slides[0]!.title).toBe('Draft');
+  });
+
+  it('applies the documented v1 migration defaults through the editor', () => {
+    const restored = restore(JSON.stringify(v1));
+    expect(restored.slides.length).toBe(v1.slides.length);
+    for (const slide of restored.slides) {
+      expect(slide.series).toBe('none');
+      expect(slide.seriesVariant).toBe('regular');
+      expect(slide.seriesLabel).toBe('');
+      expect(slide.chapterNumber).toBe(1);
+      expect(slide.customWidth).toBe(1080);
+      expect(slide.customHeight).toBe(1350);
+    }
+    expect(restored.seriesPack).toBe('none');
+  });
+});
+
 describe('builder output imports into the real v2 editor (P1 DoD)', () => {
   const brief = {
     schemaVersion: 1,

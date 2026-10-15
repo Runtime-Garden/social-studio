@@ -25,14 +25,19 @@ var RGStudioCore = (() => {
     DEFAULTS: () => DEFAULTS,
     FORMATS: () => FORMATS,
     NEW_SLIDE: () => NEW_SLIDE,
+    PROJECT_FORMAT: () => PROJECT_FORMAT,
+    PROJECT_FORMAT_VERSION: () => PROJECT_FORMAT_VERSION,
     SAMPLES: () => SAMPLES,
     SERIES_CONTENT: () => SERIES_CONTENT,
     SERIES_PACKS: () => SERIES_PACKS,
+    V1_TO_V2_SLIDE_DEFAULTS: () => V1_TO_V2_SLIDE_DEFAULTS,
     clamp: () => clamp,
     configureRenderer: () => configureRenderer,
     frame: () => frame,
     getFormat: () => getFormat,
+    migrateProjectV1ToV2: () => migrateProjectV1ToV2,
     palette: () => palette,
+    restoreProject: () => restoreProject,
     uid: () => uid
   });
 
@@ -801,6 +806,86 @@ var RGStudioCore = (() => {
       ctx.restore();
     }
     ctx.restore();
+  }
+
+  // packages/studio-core/src/schema.ts
+  var PROJECT_FORMAT = "runtime-garden-social-studio";
+  var PROJECT_FORMAT_VERSION = 2;
+  var V1_TO_V2_SLIDE_DEFAULTS = {
+    series: DEFAULTS.series,
+    seriesLabel: DEFAULTS.seriesLabel,
+    seriesVariant: DEFAULTS.seriesVariant,
+    chapterNumber: DEFAULTS.chapterNumber,
+    customWidth: DEFAULTS.customWidth,
+    customHeight: DEFAULTS.customHeight
+  };
+  function migrateProjectV1ToV2(project) {
+    const migrated = { seriesPack: "none", ...project };
+    if (Array.isArray(project.slides)) {
+      migrated.slides = project.slides.map(
+        (slide) => slide && typeof slide === "object" && !Array.isArray(slide) ? { ...V1_TO_V2_SLIDE_DEFAULTS, ...slide } : slide
+      );
+    }
+    return migrated;
+  }
+  function readVersionMarker(parsed) {
+    const version = parsed.version;
+    if (version === void 0) return "legacy";
+    if (version === 1) return 1;
+    if (version === 2) return 2;
+    throw Error(
+      `Unsupported project version: ${String(version)}. Supported versions: 1, 2.`
+    );
+  }
+  function assertFormatMarker(parsed) {
+    const marker = parsed.format;
+    if (marker === void 0 || marker === PROJECT_FORMAT) return;
+    throw Error(
+      `Not a Runtime Garden Social Studio project (format marker: "${String(marker).slice(0, 40)}").`
+    );
+  }
+  function normalizeSlide(input) {
+    if (!input || typeof input !== "object" || !SAMPLES.some((t) => t.id === input.id)) {
+      throw Error("Unknown layout in imported project.");
+    }
+    const source = input;
+    const clean = NEW_SLIDE(source.id);
+    for (const k of Object.keys(clean)) {
+      if (!Object.hasOwn(source, k)) continue;
+      const v = source[k];
+      if (typeof clean[k] === "string" && typeof v === "string") {
+        clean[k] = v.slice(0, k === "image" ? 65e5 : 15e3);
+      } else if (typeof clean[k] === "number" && typeof v === "number" && Number.isFinite(v)) {
+        clean[k] = v;
+      } else if (typeof clean[k] === "boolean" && typeof v === "boolean") {
+        clean[k] = v;
+      } else if (k === "image" && (v === null || typeof v === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(v) && v.length < 65e5)) {
+        clean[k] = v;
+      }
+    }
+    clean.uid = uid();
+    clean.scale = clamp(clean.scale, 0.7, 1.25);
+    clean.customWidth = clamp(Math.round(clean.customWidth), 400, 4096);
+    clean.customHeight = clamp(Math.round(clean.customHeight), 300, 4096);
+    if (!SERIES_PACKS.some((p) => p.id === clean.series)) clean.series = "none";
+    clean.imagePosition = clamp(clean.imagePosition, 0, 100);
+    return clean;
+  }
+  function restoreProject(text2) {
+    const parsed = JSON.parse(text2);
+    if (!parsed || !Array.isArray(parsed.slides) || parsed.slides.length < 1 || parsed.slides.length > 100) {
+      throw Error("Not a valid Social Studio project.");
+    }
+    assertFormatMarker(parsed);
+    const version = readVersionMarker(parsed);
+    const migrated = version === 1 ? migrateProjectV1ToV2(parsed) : parsed;
+    const slides = migrated.slides.map(normalizeSlide);
+    return {
+      name: String(migrated.name || "Imported collection").slice(0, 100),
+      seriesPack: SERIES_PACKS.some((p) => p.id === migrated.seriesPack) ? migrated.seriesPack : "none",
+      selected: clamp(Number(migrated.selected) || 0, 0, slides.length - 1),
+      slides
+    };
   }
   return __toCommonJS(index_exports);
 })();
