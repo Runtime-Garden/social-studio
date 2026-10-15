@@ -20,6 +20,12 @@ coverage/
 !.env.example
 *.local
 
+# Local runtime data (SQLite databases, assets) — never commit
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
 # OS / editor noise
 .DS_Store
 Thumbs.db
