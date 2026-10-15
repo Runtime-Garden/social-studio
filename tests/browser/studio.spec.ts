@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildStudioProject } from '../../packages/studio-core/src/project-builder.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -154,4 +155,66 @@ test('imports a real v1 project, persists to localStorage and survives reload', 
   await expect(page.locator('#slideIndicator')).toContainText(
     new RegExp(`01 / ${String(raw.slides.length).padStart(2, '0')}`),
   );
+});
+
+test('imports builder-generated ContentBrief projects (single card and pack) through the real file input', async ({
+  page,
+}) => {
+  const brief = {
+    schemaVersion: 1,
+    topic: 'A documented upstream software release',
+    kind: 'external_release',
+    sourceIds: ['source-123'],
+    primaryUrl: 'https://example.org/release-notes',
+    primaryPublishedAt: '2026-10-15T08:00:00Z',
+    audience: ['software_engineers'],
+    angle: 'What changed and why it matters to developers',
+    claims: [
+      {
+        id: 'claim-1',
+        text: 'A release has been announced',
+        evidence: [{ url: 'https://example.org/release-notes', locator: 'Release headline' }],
+        confidence: 'verified',
+      },
+    ],
+    caveats: ['Only describe capabilities documented by the maintainer'],
+    suggestedStudioTemplate: 'release',
+    suggestedStudioSeries: null,
+    requiresOwnerReview: true,
+  };
+
+  await openEditor(page);
+
+  const single = buildStudioProject(brief);
+  await page.locator('#projectImportFile').setInputFiles({
+    name: 'brief-single.rgstudio.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(single)),
+  });
+  await expect.poll(() => page.evaluate(() => app.slides.length)).toBe(1);
+  await expect(page.locator('#projectName')).toHaveValue(single.name);
+  const restoredSingle = await page.evaluate(() => ({
+    id: app.slides[0].id,
+    title: app.slides[0].title,
+    sourceUrl: app.slides[0].sourceUrl,
+  }));
+  expect(restoredSingle).toEqual({
+    id: 'release',
+    title: brief.angle,
+    sourceUrl: brief.primaryUrl,
+  });
+
+  const packed = buildStudioProject({ ...brief, suggestedStudioSeries: 'field' });
+  await page.locator('#projectImportFile').setInputFiles({
+    name: 'brief-pack.rgstudio.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(packed)),
+  });
+  await expect.poll(() => page.evaluate(() => app.slides.length)).toBe(packed.slides.length);
+  const restoredPack = await page.evaluate(() => ({
+    seriesPack: app.seriesPack,
+    ids: app.slides.map((s) => s.id),
+  }));
+  expect(restoredPack.seriesPack).toBe('field');
+  expect(restoredPack.ids).toEqual(packed.slides.map((s) => s.id));
 });

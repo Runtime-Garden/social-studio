@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as vm from 'node:vm';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { buildStudioProject } from '../../packages/studio-core/src/project-builder.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -192,5 +193,61 @@ describe('hostile and malformed project inputs', () => {
   it('normalizes an unknown series pack reference to "none"', () => {
     const restored = restore(JSON.stringify({ slides: [{ id: 'cover' }], seriesPack: 'not-a-pack' }));
     expect(restored.seriesPack).toBe('none');
+  });
+});
+
+describe('builder output imports into the real v2 editor (P1 DoD)', () => {
+  const brief = {
+    schemaVersion: 1,
+    topic: 'A documented upstream software release',
+    kind: 'external_release',
+    sourceIds: ['source-123'],
+    primaryUrl: 'https://example.org/release-notes',
+    primaryPublishedAt: '2026-10-15T08:00:00Z',
+    audience: ['software_engineers'],
+    angle: 'What changed and why it matters to developers',
+    claims: [
+      {
+        id: 'claim-1',
+        text: 'A release has been announced',
+        evidence: [{ url: 'https://example.org/release-notes', locator: 'Release headline' }],
+        confidence: 'verified',
+      },
+    ],
+    caveats: ['Only describe capabilities documented by the maintainer'],
+    suggestedStudioTemplate: 'release',
+    suggestedStudioSeries: null,
+    requiresOwnerReview: true,
+  };
+
+  it('single-card project restores with brief text and provenance intact', () => {
+    const project = buildStudioProject(brief);
+    const restored = restore(JSON.stringify(project));
+    expect(restored.slides).toHaveLength(1);
+    const slide = restored.slides[0]!;
+    expect(slide.id).toBe('release');
+    expect(slide.title).toBe(brief.angle);
+    expect(slide.subtitle).toBe(brief.topic);
+    expect(slide.sourceUrl).toBe(brief.primaryUrl);
+    expect(slide.date).toBe('2026-10-15');
+    // The v2 importer whitelists keys: the provenance envelope stays in the
+    // exported file but never leaks into editor app state.
+    expect(restored).not.toHaveProperty('brief');
+  });
+
+  it('series-pack project restores with pack order, styling and slide count', () => {
+    const project = buildStudioProject({ ...brief, suggestedStudioSeries: 'system' });
+    const restored = restore(JSON.stringify(project));
+    const packIds = callJson<string[]>('SERIES_PACKS.find(p=>p.id==="system").slides');
+    expect(restored.seriesPack).toBe('system');
+    expect(restored.slides.map((s) => s.id)).toEqual(packIds);
+    for (const slide of restored.slides) {
+      expect(slide.theme).toBe('dark');
+      expect(slide.series).toBe('system');
+    }
+    // A second round trip stays stable.
+    const again = restore(JSON.stringify({ format: 'runtime-garden-social-studio', version: 2, ...restored }));
+    expect(again.slides.map((s) => s.id)).toEqual(packIds);
+    expect(again.seriesPack).toBe('system');
   });
 });
