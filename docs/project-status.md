@@ -169,8 +169,8 @@ standalone sha256 `d7501b4d…` byte-identical.
 |---|---|
 | Planned | yes — `.opencode/RUNTIME_GARDEN_SOCIAL_STUDIO_V3_OPENCODE_IMPLEMENTATION_BLUEPRINT.md` |
 | Designed | yes — blueprint sections 4–14 |
-| Coded | in progress — P2 slice 1 (domain state machines, approval proof, SQLite storage + repos) committed `776f941` |
-| Tested | partial — 100 unit assertions total, incl. 30 new P2 assertions (state machines, approval hash, migrations, repos); no online API yet |
+| Coded | in progress — P2 slice 1 (domain state machines, approval proof, SQLite storage + repos) committed `776f941`; P2 slice 2 (authenticated web skeleton) committed `f2acea3` |
+| Tested | partial — 122 vitest assertions total (unit + real-HTTP integration); no projects API yet |
 | Deployed | no |
 | Live-verified | no |
 
@@ -214,6 +214,42 @@ mutation check failed exactly the three aimed tests (sabotaged
 optimistic lock), all reverted; full `npm run verify` green — smoke
 `[40, 16, 14336]`, **100 unit assertions**, typecheck OK, 28/28 Playwright,
 standalone sha256 `d7501b4d…` byte-identical.
+
+Slice 2 (commit `f2acea3`, branch `v3`): **authenticated web skeleton** —
+`apps/web` (Express 5, bundled with esbuild).
+
+- Hardened admin bootstrap: an empty user table without
+  `RG_ADMIN_USERNAME`/`RG_ADMIN_PASSWORD` refuses to start; existing users
+  are never reset by a restarting container. scrypt password hashes
+  (self-describing `scrypt$N$r$p$salt$hash`, constant-time verify).
+- Sessions: migration `0002_sessions_csrf.sql` adds a session-bound
+  `csrf_token` (NOT NULL); cookies are `HttpOnly`, `SameSite=Strict`,
+  `Secure` forced in production; mutating routes require `x-csrf-token`
+  matched constant-time against the session row, so cross-session tokens
+  are rejected. Login is rate-limited (5 failures / 15 min per
+  client+username, sliding window, success resets); disabled accounts and
+  expired/revoked sessions are rejected; unknown usernames still pay
+  scrypt against a throwaway hash (uniform 401 body, no user enumeration).
+- `/health/live` (no dependencies) and `/health/ready` (real
+  `schema_migrations` state; degrades to 503 when the database is gone);
+  uniform `{error:{code,message}}` JSON, 64 kb body cap (413/400 codes),
+  `nosniff`/`DENY`/`no-referrer`/CSP headers, `x-powered-by` off. Auth
+  actions append audit events (no passwords or tokens).
+
+**Evidence (executed):** 22 new RED→GREEN assertions — config boundaries,
+scrypt hashing, sliding-window limiter, and a 10-case real-HTTP integration
+suite over ephemeral ports (bootstrap, full login/me/logout lifecycle with
+cookie attributes, CSRF cross-session rejection, rate-limit
+lock/unlock/reset, restart persistence with a surviving session, uniform
+errors, readiness degradation); combined mutation run (5 sabotages: CSRF
+compare, failure recording, disabled check, expiry check, production
+Secure cookies) failed exactly the 9 aimed tests, all reverted. The
+bundled `apps/web/dist/web.js` was smoke-tested as a real process (live
+smoke uncovered and fixed an esbuild ESM dynamic-`require` bug in the
+bundle that in-process tests cannot see). Full `npm run verify` green:
+smoke `[40, 16, 14336]`, **122 assertions**, typecheck OK, 28/28
+Playwright, standalone sha256 `d7501b4d…` byte-identical (offline v2
+untouched).
 
 ## Evidence environment (P0)
 

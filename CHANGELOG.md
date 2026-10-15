@@ -244,3 +244,33 @@ has zero online dependencies. Full `npm run verify`: smoke `[40, 16, 14336]`,
   canonical key sorting, skipped optimistic lock); all reverted.
 - Full `npm run verify` green: smoke `[40, 16, 14336]`; **100 unit
   assertions**; typecheck OK; 28/28 Playwright; standalone byte-identical.
+
+### P2 — Authenticated web skeleton (commit `f2acea3`)
+
+**Added:**
+
+- `apps/web`: Express 5 app with a hardened admin bootstrap (empty user
+  table without credentials refuses to start), scrypt password hashes,
+  session-bound CSRF (`migrations/0002_sessions_csrf.sql`, `x-csrf-token`
+  required on mutating routes), login rate limiting (5/15 min sliding
+  window), uniform 401s with dummy-hash verification for unknown users,
+  `HttpOnly`/`SameSite=Strict` cookies (Secure forced in production),
+  `/health/live` + dependency-backed `/health/ready`, uniform
+  `{error:{code,message}}` responses, 64 kb body cap, security headers and
+  audit events for auth actions.
+- `npm run build:web` / `npm run serve:web`; the e2e-bundled dist is
+  gitignored and verified by a real-process smoke.
+
+**Tested (evidence in this repository):**
+
+- 22 new assertions RED→GREEN: config boundaries, scrypt hashing,
+  sliding-window limiter, and a real-HTTP integration suite (bootstrap,
+  login/me/logout lifecycle, CSRF cross-session rejection, rate-limit
+  lock/unlock/reset, restart persistence, disabled/expired sessions,
+  error hygiene, readiness degradation).
+- Combined mutation run (5 sabotages) failed exactly the 9 aimed tests,
+  all reverted; live smoke of `apps/web/dist/web.js` as a real process
+  (found + fixed an esbuild ESM dynamic-`require` bundle bug).
+- Full `npm run verify` green: smoke `[40, 16, 14336]`; **122
+  assertions**; typecheck OK; 28/28 Playwright; standalone sha256
+  `d7501b4d…` byte-identical.
