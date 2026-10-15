@@ -6,7 +6,7 @@
 (function () {
   var $ = function (id) { return document.getElementById(id); };
 
-  var state = { csrf: '', items: [], contentId: null, variantId: null, channelId: 'chan-1' };
+  var state = { csrf: '', items: [], contentId: null, variantId: null, channelId: 'chan-1', dirty: false };
 
   function reportError(error) {
     console.error(error);
@@ -105,6 +105,7 @@
       .then(function (body) {
         var first = (body.variants || [])[0] || null;
         state.variantId = first ? first.id : null;
+        state.dirty = false;
         $('variantText').value = first ? esc(first.text) : '';
         return refreshApproval();
       });
@@ -126,17 +127,41 @@
             $('approvalState').textContent = 'Approval stale — the snapshot no longer matches.';
             return;
           }
+          if (body.approval.decision === 'rejected') {
+            $('approvalState').textContent = 'Rejected.';
+            return;
+          }
+          if (body.approval.decision === 'returned') {
+            $('approvalState').textContent = 'Returned for revision.';
+            return;
+          }
           $('approvalState').textContent =
             'Approved snapshot ' + String(body.approval.id).slice(0, 8) + ' · valid';
         });
       });
   }
 
+  function saveText() {
+    if (!state.variantId) return Promise.resolve();
+    return postJson('/content/variants/' + encodeURIComponent(state.variantId) + '/text', {
+      text: $('variantText').value,
+    }).then(function (response) {
+      if (!response.ok) throw new Error('Save failed');
+      state.dirty = false;
+      return refreshApproval();
+    });
+  }
+
   function decide(decision) {
     if (!state.variantId) return Promise.resolve();
-    return postJson('/content/variants/' + encodeURIComponent(state.variantId) + '/approvals', {
-      decision: decision,
-      channelId: state.channelId,
+    // Approve what the user sees: persist unsaved textarea edits first so
+    // the snapshot binds the visible text, not a stale revision.
+    var save = state.dirty ? saveText() : Promise.resolve();
+    return save.then(function () {
+      return postJson('/content/variants/' + encodeURIComponent(state.variantId) + '/approvals', {
+        decision: decision,
+        channelId: state.channelId,
+      });
     })
       .then(function (response) {
         if (!response.ok) throw new Error('Decision failed');
@@ -154,15 +179,10 @@
       decide('rejected').catch(reportError);
     });
     $('saveTextBtn').addEventListener('click', function () {
-      if (!state.variantId) return;
-      postJson('/content/variants/' + encodeURIComponent(state.variantId) + '/text', {
-        text: $('variantText').value,
-      })
-        .then(function (response) {
-          if (!response.ok) throw new Error('Save failed');
-          return refreshApproval();
-        })
-        .catch(reportError);
+      saveText().catch(reportError);
+    });
+    $('variantText').addEventListener('input', function () {
+      state.dirty = true;
     });
     $('pauseBtn').addEventListener('click', function () {
       postJson('/ops/pause', {})

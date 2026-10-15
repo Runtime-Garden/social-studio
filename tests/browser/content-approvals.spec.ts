@@ -130,9 +130,37 @@ test('editing variant text after approval revokes the snapshot', async ({ page }
   await page.click('#inboxList li');
   await page.click('#approveBtn');
   await expect(page.locator('#approvalState')).toContainText('Approved snapshot');
+  await expect(page.locator('#variantText')).not.toBeEmpty();
   await page.fill('#variantText', 'Hello from Lumen, rewritten');
   await page.click('#saveTextBtn');
   await expect(page.locator('#approvalState')).toContainText('stale');
+});
+
+test('reopening a rejected story shows Rejected, not an approval', async ({ page }) => {
+  seedStory('Ember');
+  await loginUi(page);
+  await page.click('#inboxList li');
+  await page.click('#rejectBtn');
+  await expect(page.locator('#approvalState')).toHaveText('Rejected.');
+  await page.reload();
+  await page.waitForURL(`${base}/content/`);
+  await page.click('#inboxList li');
+  await expect(page.locator('#approvalState')).toHaveText('Rejected.');
+});
+
+test('approving with unsaved text edits approves the edited text', async ({ page }) => {
+  seedStory('Flint');
+  await loginUi(page);
+  await page.click('#inboxList li');
+  await expect(page.locator('#variantText')).toHaveValue('Hello from Flint');
+  await page.fill('#variantText', 'Hello from Flint, edited before approval');
+  await page.click('#approveBtn');
+  await expect(page.locator('#approvalState')).toContainText('Approved snapshot');
+  await page.reload();
+  await page.waitForURL(`${base}/content/`);
+  await page.click('#inboxList li');
+  await expect(page.locator('#variantText')).toHaveValue('Hello from Flint, edited before approval');
+  await expect(page.locator('#approvalState')).toContainText('Approved snapshot');
 });
 
 test('pause control reports publishing paused', async ({ page }) => {
