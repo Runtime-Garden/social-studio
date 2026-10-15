@@ -1,12 +1,12 @@
 # Runtime Garden Social Studio · v2.0
 
-**Status:** Implemented. JavaScript syntax + mock Canvas rendering + series/project serialization tested; **real browser end-to-end testing not completed** (environment Chromium policy blocked even loopback access). Not deployed.
+**Status:** v2 is implemented and preserved as the offline edition. JavaScript syntax, mock Canvas rendering, series/project serialization, and **real-browser tests** (Chromium: full 40-layout light/dark render sweep, export downloads, v1 project import, network-blocked standalone artifact) run in CI. The v3 online workspace (research → AI-assisted drafting → approvals → Buffer publishing) is under development on branch `v3` — its true state is tracked in `docs/project-status.md`. Nothing online is deployed; no live publishing exists.
 
 The official **Runtime Garden Design Kit v2** is the single design authority. A local-first static HTML visual editor for technical post designs, 40 layouts, 12 coordinated carousel series, and 16 output size choices (15 presets + custom). No paid SaaS, API key, CMS, database, or image uploading service.
 
 ## Start
 
-1. Double-click **`Runtime_Garden_Social_Studio_v2_Standalone.html`**. Every required editor asset and the authentic brand SVG logos are embedded in this HTML file. External Google Fonts are optional; if unavailable the editor uses system fallbacks.
+1. Double-click **`Runtime_Garden_Social_Studio_v2_Standalone.html`**. Every required editor asset and the authentic brand SVG logos are embedded in this HTML file. The file is generated from the editable sources by `npm run build:standalone` (deterministic; CI verifies it stays current). External Google Fonts are optional; if unavailable the editor uses system fallbacks.
 2. Or open `index.html` from the unpacked folder, with the CSS/JS/assets folders kept alongside it. If your browser enforces stricter `file:` security, serve locally with `python -m http.server 8080 --bind 127.0.0.1` and visit `http://127.0.0.1:8080`.
 3. Keep regular `.rgstudio.json` project backups. Local browser autosave is not a cloud backup.
 
@@ -69,27 +69,39 @@ Templates: choose/edit design on current slide. Series: create a coordinated pac
 
 ## Tests
 
-From the unpacked folder, with Node.js installed:
+From the repository root, with Node.js 20+ installed:
 
 ```sh
-node --check studio.js
-node tests/render-smoke.cjs
-node tests/series-smoke.cjs
+npm ci                  # dev tooling (TypeScript, Vitest, Playwright)
+npm run check           # node --check studio.js
+npm run smoke           # mock-Canvas layout/format sweep + series packs + examples
+npm run test            # unit tests (v1/v2 project round-trips, hostile inputs)
+npm run build:standalone
+npm run test:browser    # real Chromium: render sweep, exports, import, offline artifact
+node tools/capture-evidence.cjs   # regenerate docs/evidence/p0 screenshots
 ```
 
-The smoke suite checks every 40-layout × 16-format × 2-color-mode combination (1,280 Canvas frame invocations) using a mocked drawing context; and checks each of the 12 pack builders, project JSON serialization, and custom dimensions. It **does not** prove pixel-perfect visuals in Chrome/Safari/Firefox. An actual browser QA checklist should cover logo rendering, very long headlines, square/banner crops, image upload, ZIP export, JSON restoration, accessibility, and mobile viewports before release.
+The smoke suite checks every 40-layout × 16-format × 2-color-mode combination (1,280 Canvas frame invocations) using a mocked drawing context; it checks each of the 12 pack builders, project JSON serialization, custom dimensions, and that the committed example projects still match the current pack definitions. The unit suite proves v1/v2 `.rgstudio.json` import behavior including malformed and hostile inputs. The browser suite proves real rendering in Chromium (80-frame pixel-hash sweep), real PNG/JPEG/WebP/ZIP download flows, localStorage recovery, and that the standalone artifact renders with **all network requests blocked**. It still does not replace visual review on Safari/Firefox/mobile, which remains on the P1 test matrix.
 
 ## Package structure
 
 ```text
-index.html, studio.css, studio.js        # Editable source editor
-Runtime_Garden_Social_Studio_v2_Standalone.html # All-in-one offline-ready HTML
+index.html, studio.css, studio.js        # Editable source editor (v2, offline)
+Runtime_Garden_Social_Studio_v2_Standalone.html # Generated all-in-one offline HTML
 assets/                                  # Official v2 logos and design tokens
 examples/series-*.rgstudio.json         # 12 importable, connected series
 examples/v2-series-preview.png          # Illustrative pack overview
 examples/                               # Original v1 sample graphics/projects
-tests/                                  # Canvas and series smoke tests
-docs/                                   # Design brief and official logo notes
+tests/                                  # Mock Canvas, unit and real-browser tests
+tools/                                  # serve, standalone builder, evidence capture
+docs/                                   # Design brief, ADRs, threat model, status, evidence
+packages/shared/                        # v3 shared contract constants (early skeleton)
+.github/workflows/ci.yml                # Smoke + typecheck + unit + browser CI
 ```
+
+The v3 online workspace (apps for web/worker, domain/publishing packages,
+migrations, Docker/Compose) will be added under `apps/` and `packages/`
+following the blueprint; see `docs/project-status.md` for what actually
+exists versus what is planned.
 
 **Runtime Garden — Where ideas grow into systems.**
