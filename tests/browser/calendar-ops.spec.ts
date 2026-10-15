@@ -37,7 +37,7 @@ function seedScheduled(date: string, title: string): string {
     variantId: variant.id,
     variantRevision: variant.revision,
     channelId: 'chan-1',
-    localKey: `local-${date}`,
+    localKey: `local-${date}-${title.replace(/\s+/g, '-')}`,
   });
   createJob(server.db, {
     kind: 'buffer_submit',
@@ -125,9 +125,25 @@ test('channel status turns stale after a variant edit', async ({ page }) => {
   await expect(page.locator('#channelStatus li')).toContainText('stale');
 });
 
+test('shows an empty state for a month with no scheduled rows', async ({ page }) => {
+  seedScheduled('2026-12-05', 'Winter story');
+  await loginUi(page, '2027-03');
+  await expect(page.locator('#calendarEmpty')).toBeVisible();
+  await expect(page.locator('#calendarEmpty')).toHaveText('No scheduled variants this month.');
+  await expect(page.locator('#dayGrid .day')).toHaveCount(31);
+});
+
+test('falls back to UTC for an unknown timezone selection', async ({ page }) => {
+  seedScheduled('2026-11-15', 'Timezone story');
+  await loginUi(page, '2026-11');
+  await page.selectOption('#tzSelect', 'Mars/Olympus');
+  await expect(page.locator('#tzBadge')).toHaveText('UTC');
+  await expect(page.locator('.day[data-date="2026-11-15"]')).toContainText('2026-11-15T15:00:00.000Z');
+});
+
 test('audit and jobs tables render real rows and pause works', async ({ page }) => {
   seedScheduled('2026-11-07', 'Ops story');
-  await loginUi(page);
+  await loginUi(page, '2026-11');
   await expect(page.locator('#jobsTable tr').first()).toContainText('buffer_submit');
   await expect(page.locator('#jobsEmpty')).toBeHidden();
   await expect(page.locator('#auditTable tr').first()).toContainText('auth.login_succeeded');

@@ -6,7 +6,7 @@
 (function () {
   var $ = function (id) { return document.getElementById(id); };
 
-  var state = { csrf: '', month: '2026-11', tz: 'UTC', selectedVariant: null };
+  var state = { csrf: '', month: '', tz: 'UTC', selectedVariant: null };
 
   function reportError(error) {
     console.error(error);
@@ -35,7 +35,8 @@
     var year = Number(parts[0]);
     var mon = Number(parts[1]);
     if (!Number.isInteger(year) || !Number.isInteger(mon) || mon < 1 || mon > 12) {
-      return { from: '2026-11-01', to: '2026-11-30', label: 'November 2026' };
+      var now = new Date().toISOString();
+      return { from: now.slice(0, 8) + '01', to: now.slice(0, 10), label: 'Current month' };
     }
     var last = new Date(Date.UTC(year, mon, 0)).getUTCDate();
     var pad = function (n) { return String(n).padStart(2, '0'); };
@@ -47,7 +48,25 @@
     return { from: year + '-' + pad(mon) + '-01', to: year + '-' + pad(mon) + '-' + last, label: label };
   }
 
+  function readJson(request, empty) {
+    return Promise.resolve(request).then(function (response) {
+      if (!response.ok) {
+        var error = new Error('request failed (' + response.status + ')');
+        error.failed = true;
+        throw error;
+      }
+      return response.json();
+    });
+  }
+
+  function renderFailure(message) {
+    $('calendarEmpty').hidden = false;
+    $('calendarEmpty').textContent = message;
+    $('opsState').textContent = 'Could not load calendar data';
+  }
+
   function renderDayGrid(days) {
+    $('calendarEmpty').textContent = 'No scheduled variants this month.';
     var grid = $('dayGrid');
     grid.textContent = '';
     var total = 0;
@@ -81,10 +100,10 @@
 
   function selectVariant(variantId) {
     state.selectedVariant = variantId;
-    return api('/schedule/publications?variantId=' + encodeURIComponent(variantId))
-      .then(function (response) {
-        return response.ok ? response.json() : { channels: [] };
-      })
+    return readJson(
+      fetch('/api/v1/schedule/publications?variantId=' + encodeURIComponent(variantId)),
+      { channels: [] },
+    )
       .then(function (body) {
         var list = $('channelStatus');
         list.textContent = '';
@@ -125,13 +144,14 @@
     var range = monthRange(state.month);
     $('monthTitle').textContent = range.label;
     $('tzBadge').textContent = state.tz;
-    return api(
-      '/schedule/calendar?from=' + range.from + '&to=' + range.to + '&tz=' + encodeURIComponent(state.tz),
+    return readJson(
+      fetch(
+        '/api/v1/schedule/calendar?from=' + range.from + '&to=' + range.to + '&tz=' + encodeURIComponent(state.tz),
+      ),
+      { days: [] },
     )
-      .then(function (response) {
-        return response.ok ? response.json() : { days: [] };
-      })
       .then(function (body) {
+        $('tzBadge').textContent = body.tz || state.tz;
         renderDayGrid(body.days || []);
         var first = null;
         (body.days || []).forEach(function (day) {
@@ -145,18 +165,12 @@
   }
 
   function loadOps() {
-    return api('/ops/audit?limit=50')
-      .then(function (response) {
-        return response.ok ? response.json() : { events: [] };
-      })
+    return readJson(fetch('/api/v1/ops/audit?limit=50'), { events: [] })
       .then(function (body) {
         renderTable('auditTable', body.events || [], function (tr, event) {
           tr.append(cell(event.createdAt), cell(event.actor), cell(event.action));
         });
-        return api('/ops/jobs?limit=50');
-      })
-      .then(function (response) {
-        return response.ok ? response.json() : { jobs: [] };
+        return readJson(fetch('/api/v1/ops/jobs?limit=50'), { jobs: [] });
       })
       .then(function (body) {
         var jobs = body.jobs || [];
@@ -171,19 +185,26 @@
     var params = new URLSearchParams(window.location.search);
     var month = params.get('month') || '';
     if (/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return month;
-    return '2026-11';
+    return new Date().toISOString().slice(0, 7);
   }
 
   function boot() {
     state.month = readMonthParam();
     $('monthInput').value = state.month;
+    $('monthInput').value = state.month;
     $('monthInput').addEventListener('change', function () {
       state.month = $('monthInput').value || state.month;
-      loadMonth().catch(reportError);
+      loadMonth().catch(function (error) {
+        reportError(error);
+        renderFailure('The calendar could not be loaded. Try another month.');
+      });
     });
     $('tzSelect').addEventListener('change', function () {
       state.tz = $('tzSelect').value;
-      loadMonth().catch(reportError);
+      loadMonth().catch(function (error) {
+        reportError(error);
+        renderFailure('The calendar could not be loaded for this timezone.');
+      });
     });
     $('pauseBtn').addEventListener('click', function () {
       api('/ops/pause', { method: 'POST', body: '{}' })
@@ -201,6 +222,10 @@
       .then(function (body) {
         state.csrf = body.csrfToken;
         return loadMonth().then(loadOps);
+      })
+      .catch(function (error) {
+        reportError(error);
+        renderFailure('The calendar could not be loaded. Check your connection and sign in again.');
       });
   }
 

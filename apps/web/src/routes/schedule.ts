@@ -15,6 +15,8 @@ import {
 import { requireAuth } from '../middleware/session.js';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** A calendar month view is the largest legitimate request; caps the loop. */
+const MAX_SPAN_DAYS = 93;
 
 function resolveTimeZone(raw: unknown): string {
   if (typeof raw !== 'string' || raw === '') return 'UTC';
@@ -40,6 +42,17 @@ export function createScheduleRouter({ db }: { db: StudioDatabase }): Router {
     if (!DAY.test(from) || !DAY.test(to) || from > to) {
       res.status(400).json({
         error: { code: 'invalid_request', message: 'from/to must be YYYY-MM-DD with from <= to' },
+      });
+      return;
+    }
+    const spanDays =
+      (Date.parse(`${to}T00:00:00.000Z`) - Date.parse(`${from}T00:00:00.000Z`)) / 86_400_000 + 1;
+    if (spanDays > MAX_SPAN_DAYS) {
+      res.status(400).json({
+        error: {
+          code: 'invalid_request',
+          message: `calendar range must not exceed ${MAX_SPAN_DAYS} days`,
+        },
       });
       return;
     }

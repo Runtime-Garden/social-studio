@@ -22,6 +22,9 @@ export interface JobRow {
   id: string;
   kind: string;
   state: string;
+  attempts: number;
+  lastError: string | null;
+  createdAt: string;
 }
 
 export function createJob(
@@ -50,7 +53,14 @@ export function createJob(
     stamp,
     stamp,
   );
-  return { id, kind: input.kind, state: 'queued' };
+  return {
+    id,
+    kind: input.kind,
+    state: 'queued',
+    attempts: 0,
+    lastError: null,
+    createdAt: stamp,
+  };
 }
 
 /**
@@ -63,17 +73,18 @@ export function leaseJob(
   { owner, leaseMs, now }: { owner: string; leaseMs: number; now?: number },
 ): { id: string; state: string } | null {
   const stamp = nowIso(now);
-  const row = db
-    .prepare('SELECT state, lease_expires_at AS leaseExpiresAt FROM jobs WHERE id = ?')
-    .get(id) as { state: string; leaseExpiresAt: string | null } | undefined;
-  if (!row) return null;
-  const expired = row.leaseExpiresAt !== null && row.leaseExpiresAt <= stamp;
-  if (row.state !== 'queued' && !expired) return null;
-  db.prepare(
-    `UPDATE jobs SET state = 'leased', lease_owner = ?, lease_expires_at = ?,
-      attempts = attempts + 1, updated_at = ? WHERE id = ?`,
-  ).run(owner, new Date((now ?? Date.now()) + leaseMs).toISOString(), stamp, id);
-  return { id, state: 'leased' };
+  const leaseExpiry = new Date((now ?? Date.now()) + leaseMs).toISOString();
+  // One conditional UPDATE is the claim: a concurrent claimant that already
+  // moved the row out of `queued` (or holds a live lease) updates 0 rows, so
+  // there is no SELECT/UPDATE gap to race across processes.
+  const result = db
+    .prepare(
+      `UPDATE jobs SET state = 'leased', lease_owner = ?, lease_expires_at = ?,
+        attempts = attempts + 1, updated_at = ?
+       WHERE id = ? AND (state = 'queued' OR lease_expires_at <= ?)`,
+    )
+    .run(owner, leaseExpiry, stamp, id, stamp);
+  return result.changes > 0 ? { id, state: 'leased' } : null;
 }
 
 export function completeJob(
@@ -97,16 +108,24 @@ export function listJobs(
   const args = state ? [state, limit, offset] : [limit, offset];
   const rows = db
     .prepare(
-      `SELECT id, kind, state FROM jobs ${where}
+      `SELECT id, kind, state, attempts, last_error AS lastError, created_at AS createdAt
+       FROM jobs ${where}
        ORDER BY created_at DESC, rowid DESC LIMIT ? OFFSET ?`,
     )
-    .all(...args) as Array<{ id: string; kind: string; state: string }>;
+    .all(...args) as Array<{
+    id: string;
+    kind: string;
+    state: string;
+    attempts: number;
+    lastError: string | null;
+    createdAt: string;
+  }>;
   const countRow = (
     state
       ? db.prepare('SELECT COUNT(*) AS n FROM jobs WHERE state = ?').get(state)
       : db.prepare('SELECT COUNT(*) AS n FROM jobs').get()
   ) as { n: number };
-  return { jobs: rows.map((r) => ({ id: r.id, kind: r.kind, state: r.state })), total: countRow.n };
+  return { jobs: rows, total: countRow.n };
 }
 
 export function createPublication(

@@ -94,6 +94,20 @@ describe('schedule calendar API', () => {
     expect(((await bad.json()) as ErrorBody).error.code).toBe('invalid_request');
   });
 
+  it('rejects ranges longer than three months to protect the event loop', async () => {
+    const server = await started();
+    seedScheduled(server);
+    const login = await loginOk(server);
+
+    const huge = await getJson(
+      server,
+      '/api/v1/schedule/calendar?from=0001-01-01&to=9999-12-31',
+      { cookie: login.cookie },
+    );
+    expect(huge.status).toBe(400);
+    expect(((await huge.json()) as ErrorBody).error.code).toBe('invalid_request');
+  });
+
   it('requires a session for schedule reads', async () => {
     const server = await started();
     const anonymous = await getJson(server, '/api/v1/schedule/calendar?from=2026-11-01&to=2026-11-30');

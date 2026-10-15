@@ -1,0 +1,25 @@
+# Build context hygiene: never upload host build output, VCS, or local data.
+node_modules
+.git
+.gitignore
+data
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+test-results
+playwright-report
+blob-report
+coverage
+.env
+.env.*
+!.env.example
+.superpowers
+docs
+examples
+index.html
+studio.js
+studio.css
+Runtime_Garden_Social_Studio_v2_Standalone.html
+Dockerfile
+.dockerignore
+compose.yaml

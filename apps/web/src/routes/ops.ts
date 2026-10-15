@@ -22,6 +22,7 @@ import {
   isValidPolicyValue,
 } from '../../../../packages/domain/src/policy.js';
 import { getAuth, requireAuth, requireCsrf } from '../middleware/session.js';
+import { listJobs } from '../../../../packages/storage/src/repos/scheduling.js';
 
 /** Express 5 route params can type as string[]; only the plain string form is valid here. */
 
@@ -130,14 +131,11 @@ export function createOpsRouter({ db }: { db: StudioDatabase }): Router {
       });
       return;
     }
-    const jobs = db
-      .prepare(
-        `SELECT id, kind, state, run_at, attempts, last_error, created_at, updated_at
-         FROM jobs ORDER BY created_at DESC, rowid DESC LIMIT ? OFFSET ?`,
-      )
-      .all(page.limit, page.offset);
-    const { n } = db.prepare('SELECT COUNT(*) AS n FROM jobs').get() as { n: number };
-    res.status(200).json({ jobs, total: n, limit: page.limit, offset: page.offset });
+    res.status(200).json({
+      ...listJobs(db, { ...page, state: typeof req.query.state === 'string' ? req.query.state : undefined }),
+      limit: page.limit,
+      offset: page.offset,
+    });
   });
 
   return router;

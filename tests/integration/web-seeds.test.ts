@@ -96,4 +96,23 @@ it('makes seeded fixtures visible through the real API', async () => {
   ).json() as { days: Array<{ entries: unknown[] }> };
   const scheduled = calendar.days.reduce((n, day) => n + day.entries.length, 0);
   expect(scheduled).toBeGreaterThanOrEqual(1);
+
+  // The seeded approval must bind the seeded variant: a fresh stack reports
+  // a VALID approval, otherwise the lead feature reads as unexplained drift.
+  const variant = await (
+    await fetch(`${active.url}/api/v1/schedule/publications?variantId=${seedVariantId(dir)}`, {
+      headers: { cookie },
+    })
+  ).json() as { channels: Array<{ approvalValid: boolean }> };
+  expect(variant.channels[0]?.approvalValid).toBe(true);
 });
+
+function seedVariantId(dir: string): string {
+  const db = new DatabaseSync(path.join(dir, 'studio.sqlite'));
+  try {
+    const row = db.prepare('SELECT id FROM platform_variants LIMIT 1').get() as { id: string };
+    return row.id;
+  } finally {
+    db.close();
+  }
+}

@@ -61,19 +61,12 @@ function migrate(db) {
     const recorded = name.replace(/\.sql$/, '');
     if (applied.has(recorded)) continue;
     const version = Number(name.slice(0, 4));
-    db.exec('BEGIN');
-    try {
-      db.exec(fs.readFileSync(path.join(MIGRATIONS, name), 'utf8'));
-      db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)').run(
-        version,
-        recorded,
-        nowIso(),
-      );
-      db.exec('COMMIT');
-    } catch (error) {
-      db.exec('ROLLBACK');
-      throw error;
-    }
+    db.exec(fs.readFileSync(path.join(MIGRATIONS, name), 'utf8'));
+    db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)').run(
+      version,
+      recorded,
+      nowIso(),
+    );
   }
 }
 
@@ -205,13 +198,7 @@ function seed(db) {
     db.prepare(
       `INSERT INTO approvals (id, variant_id, variant_revision, channel_id, approval_hash, approver_user_id, decision, decided_at)
        VALUES (?, ?, 1, 'seed-channel', ?, ?, 'approved', ?)`,
-    ).run(
-      approvalId,
-      variantId,
-      stableId('h', 'seed-approval-1'),
-      userId,
-      nowIso(),
-    );
+    ).run(approvalId, variantId, seedApprovalHash(db, variantId, contentId), userId, nowIso());
   }
 
   const publicationId = stableId('p', 'seed-publication-1');
@@ -297,6 +284,39 @@ function seed(db) {
   }
 }
 
+/**
+ * Canonical approval hash identical to packages/domain/src/approval.ts
+ * (recursively key-sorted JSON, sha256) over the seeded subject, so the
+ * seeded fixture reports approvalValid=true instead of looking stale.
+ */
+function seedApprovalHash(db, variantId, contentItemId) {
+  const variant = db
+    .prepare('SELECT revision, text, scheduled_at AS scheduledAt FROM platform_variants WHERE id = ?')
+    .get(variantId);
+  const sourceIds = db
+    .prepare(
+      `SELECT si.id AS id FROM source_items si
+       WHERE si.id = (SELECT source_item_id FROM content_items WHERE id = ?)
+          OR si.id IN (SELECT source_item_id FROM story_sources
+                       WHERE cluster_id = (SELECT cluster_id FROM content_items WHERE id = ?))`,
+    )
+    .all(contentItemId, contentItemId)
+    .map((row) => row.id)
+    .filter(Boolean);
+  const subject = {
+    channel_id: 'seed-channel',
+    format_metadata: {},
+    ordered_asset_hashes: [],
+    policy_version: 'p2-slice-4',
+    source_ids: sourceIds.sort(),
+    target_publish_at_utc: variant.scheduledAt,
+    text: variant.text,
+    variant_id: variantId,
+    variant_revision: variant.revision,
+  };
+  return createHash('sha256').update(JSON.stringify(subject)).digest('hex');
+}
+
 function sha256Hex(text) {
   return createHash('sha256').update(text).digest('hex');
 }
@@ -307,10 +327,18 @@ function main() {
   }
   const db = new DatabaseSync(dbPath === ':memory:' ? ':memory:' : path.resolve(dbPath));
   try {
-    migrate(db);
-    seed(db);
-    const counts = {
-      users: db.prepare('SELECT COUNT(*) AS n FROM users').get().n,
+    db.exec('PRAGMA foreign_keys = ON');
+    db.exec('PRAGMA busy_timeout = 5000');
+    db.exec('BEGIN');
+    try {
+      migrate(db);
+      seed(db);
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+    db.exec('COMMIT');
+    const counts = {      users: db.prepare('SELECT COUNT(*) AS n FROM users').get().n,
       stories: db.prepare('SELECT COUNT(*) AS n FROM content_items').get().n,
       variants: db.prepare('SELECT COUNT(*) AS n FROM platform_variants').get().n,
       projects: db.prepare('SELECT COUNT(*) AS n FROM studio_projects').get().n,

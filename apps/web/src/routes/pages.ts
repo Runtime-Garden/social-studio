@@ -53,7 +53,10 @@ export function createPagesRouter(config: WebConfig): Router {
       return;
     }
     if (req.path === '/calendar') {
-      res.redirect('/calendar/');
+      // Preserve the query (the page is month-driven); req.url carries it
+      // because Express 5 does not populate req.search.
+      const queryIndex = req.url.indexOf('?');
+      res.redirect(`/calendar/${queryIndex === -1 ? '' : req.url.slice(queryIndex)}`);
       return;
     }
     sendPage(res, 'calendar.html');

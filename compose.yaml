@@ -3,7 +3,7 @@
 # Usage:
 #   cp .env.example .env   # then edit the two required values below
 #   docker compose up
-#   node tools/seed-fixtures.cjs   # optional demo fixtures (idempotent)
+#   docker compose exec web node tools/seed-fixtures.cjs /app/data/studio.sqlite
 #
 # No secrets belong in this file. All secrets stay in .env (gitignored).
 
@@ -17,7 +17,9 @@ services:
       NODE_ENV: production
       RG_HOST: 0.0.0.0
     ports:
-      - "${RG_PORT:-8787}:8787"
+      # Host port maps to the same container port the app actually binds
+      # (RG_PORT from .env), so a custom RG_PORT keeps working.
+      - "${RG_PORT:-8787}:${RG_PORT:-8787}"
     volumes:
       - studio-data:/app/data
     restart: unless-stopped
