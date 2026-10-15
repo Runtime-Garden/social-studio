@@ -198,3 +198,24 @@ undo/redo, large-text and custom-dimension browser coverage.
 - Chromium `maxChannelDelta` widened 16 → 96 with the observation documented
   in the spec's tolerance policy; the one-word mutation signal (delta 224)
   remains caught. 14/14 goldens green after the change.
+
+### P1 — Remaining offline browser coverage (commit `a214ce6`) — **P1 complete**
+
+**Tested (evidence in this repository):**
+
+- Undo/redo through the real `Ctrl+Z` / `Ctrl+Y` keyboard paths and the
+  toolbar buttons, asserting app-state round-trips.
+- Maximum-length input (260-char headline + 600-char supporting copy):
+  renders with zero page errors, publish preflight flags the over-length
+  headline, PNG export stays 1080×1350.
+- Custom `1200×630` canvas: style-inspector flow, export verified by IHDR
+  chunk parse and filename.
+- Mutation check: disabling the undo shortcut, raising the preflight
+  threshold and breaking `getFormat('custom')` failed exactly these three
+  tests, each at its own assertion; all reverted (bundle byte-identical).
+
+**P1 DoD (blueprint line 796) — MET:** offline v2 feature parity demonstrated
+with tests; the shared builder emits importable projects; the offline edition
+has zero online dependencies. Full `npm run verify`: smoke `[40, 16, 14336]`,
+70 unit assertions, typecheck OK, 28/28 Playwright, standalone sha256
+`d7501b4d…` byte-identical.

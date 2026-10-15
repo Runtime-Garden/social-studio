@@ -5,7 +5,7 @@ separated: planned / designed / coded / tested / deployed / live-verified.
 Nothing below may be inferred from code merely existing — every "tested" claim
 links to executed evidence.
 
-**Last updated:** 2026-10-15 (P0 complete; P1 slices 1–5 committed — registry, builder, goldens, renderer, explicit schema/migrations).
+**Last updated:** 2026-10-15 (P0 complete; **P1 complete** — slices 1–6; P2 next).
 
 ## v2 offline editor (preserved baseline)
 
@@ -16,7 +16,7 @@ links to executed evidence.
 | Coded | yes — immutable baseline commit `d2f202c` |
 | Tested (mock Canvas) | yes — `tests/render-smoke.cjs` (40 layouts × 16 formats × 2 themes; 14,336 text draw calls), `tests/series-smoke.cjs` (12 packs, committed examples verified) |
 | Tested (unit) | yes — 70 assertions across the unit suites (`tests/unit/*.test.ts`: v1/v2 round-trip + hostile inputs, explicit schema + v1→v2 migrations, content-brief builder, renderer contract, shared constants) |
-| Tested (real browser) | yes — `tests/browser/*.spec.ts` on Chromium headless shell 156 + Firefox (25 tests: 80-frame render sweep; live UI interactions; builder-project import; PNG/JSON/ZIP/JPEG/WebP/multi-size-bundle downloads validated by file signatures; **all 12 series packs applied through the UI with README frame counts**; **all 16 size presets rendered at exact README dimensions**; **image upload + crop-position change**; v1 import + reload persistence; network-blocked standalone; **7 golden-image baselines × 2 engines with readable tolerances**) |
+| Tested (real browser) | yes — `tests/browser/*.spec.ts` on Chromium headless shell 156 + Firefox (**28 tests**: 80-frame render sweep; live UI interactions incl. **undo/redo via real keyboard shortcuts and buttons** and **maximum-length text with preflight + export**; builder-project import; PNG/JSON/ZIP/JPEG/WebP/**custom-dimension**/multi-size-bundle downloads validated by file signatures and IHDR dimensions; **all 12 series packs applied through the UI with README frame counts**; **all 16 size presets rendered at exact README dimensions**; **image upload + crop-position change**; v1 import + reload persistence; network-blocked standalone; **7 golden-image baselines × 2 engines with readable tolerances**) |
 | Visual evidence | `docs/evidence/p0/*.png` (real screenshots; standalone file:// render byte-identical to served render) |
 | Deployed | not deployed (by design; static folder/standalone only) |
 | Live-verified | n/a (no external service) |
@@ -32,7 +32,7 @@ links to executed evidence.
   with fresh random uids on every run. Now tests are read-only; regeneration
   happens only through `npm run refresh:examples`.
 
-## P1 — Shared Studio core (in progress)
+## P1 — Shared Studio core (complete — slices 1–6)
 
 Slice 1 (commit `a26cef4`, branch `v3`): the pure registry
 (`FORMATS`, `getFormat`, `SAMPLES`, `SERIES_PACKS`, `DEFAULTS`,
@@ -67,9 +67,10 @@ reverted); 2 VM integration tests restore builder output through the real
 input; full `npm run verify` green (47 unit assertions, 11/11 Playwright,
 standalone artifact byte-identical).
 
-Remaining P1 checklist: browser coverage for undo/redo, large text and
-custom-dimension exports. (Canvas `frame` extraction landed as slice 4;
-explicit schema modules + v1→v2 migrations as slice 5.)
+Remaining P1 checklist: **empty — all P1 items complete.** (Canvas `frame`
+extraction landed as slice 4; explicit schema modules + v1→v2 migrations as
+slice 5; undo/redo, large-text and custom-dimension browser coverage as
+slice 6.)
 
 Slice 3 (commit `8c2d3bd`): **deterministic golden-image snapshots**.
 
@@ -141,6 +142,26 @@ same phenomenon already calibrated for firefox (delta 68). Chromium
 `maxChannelDelta` widened 16 → 96 (documented in the spec's tolerance
 policy); the one-word mutation signal (delta 224) remains caught. 14/14
 goldens green afterwards.
+
+Slice 6 (commit `a214ce6`): **remaining offline browser coverage**.
+
+- Undo/redo through the real `Ctrl+Z` / `Ctrl+Y` keyboard paths **and** the
+  toolbar buttons, with app-state round-trip assertions.
+- Maximum-length input: 260-char headline + 600-char supporting copy renders
+  with zero page errors, the publish preflight flags the over-length
+  headline, and the PNG export stays 1080×1350.
+- Custom dimensions: style-inspector flow to `format=custom` 1200×630, export
+  verified by IHDR chunk parse and filename.
+- **Mutation check (one combined run, three targeted sabotages):** disabling
+  the undo shortcut, raising the preflight threshold and breaking
+  `getFormat('custom')` failed exactly these three tests, each at its own
+  assertion; all reverted, bundle byte-identical afterwards.
+
+**P1 DoD (blueprint line 796) — MET:** offline v2 feature parity demonstrated
+with tests; shared builder outputs importable projects; zero online
+dependency in the offline edition. Full verify after slice 6: smoke
+`[40, 16, 14336]`, 70 unit assertions, typecheck OK, 28/28 Playwright,
+standalone sha256 `d7501b4d…` byte-identical.
 
 ## v3 online workspace (blueprint phases P2–P6)
 
