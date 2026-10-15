@@ -62,6 +62,7 @@ export function createScheduleRouter({ db }: { db: StudioDatabase }): Router {
         scheduledAtUtc: entry.scheduledAt,
         scheduledAtLocal: local.format(new Date(entry.scheduledAt)),
         status: entry.status,
+        text: entry.text,
       });
       byDay.set(dayKey(entry.scheduledAt), list);
     }

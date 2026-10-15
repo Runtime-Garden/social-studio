@@ -98,9 +98,11 @@ describe('publications with live approval validity', () => {
   it('reports approvalValid true, then false after a variant edit', () => {
     const variantId = seedApproved();
     expect(getPublicationStatus(db, variantId)[0]?.approvalValid).toBe(true);
+    expect(getPublicationStatus(db, variantId)[0]?.hasApproval).toBe(true);
     updateVariantText(db, variantId, 'Hello again');
     const status = getPublicationStatus(db, variantId)[0];
     expect(status?.approvalValid).toBe(false);
+    expect(status?.hasApproval).toBe(true);
     expect(status?.submissionState).toBe('not_submitted');
   });
 

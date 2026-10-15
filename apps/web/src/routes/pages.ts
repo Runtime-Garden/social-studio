@@ -45,6 +45,19 @@ export function createPagesRouter(config: WebConfig): Router {
   });
 
   // Same Express-5 canonicalization shape as /studio (see above).
+  // The bounce preserves the full path+query (?month=) via originalUrl so
+  // sign-in returns to the viewed month; login.js guards it same-origin.
+  router.get(['/calendar', '/calendar/'], (req, res) => {
+    if (!getAuth(req)) {
+      res.redirect(`/login?next=${encodeURIComponent(req.originalUrl)}`);
+      return;
+    }
+    if (req.path === '/calendar') {
+      res.redirect('/calendar/');
+      return;
+    }
+    sendPage(res, 'calendar.html');
+  });
   // The bounce carries ?next= so the sign-in page can return here; the
   // /studio/ bounce stays a bare /login because /studio/ is already the
   // default post-login target (pinned by web-pages tests).

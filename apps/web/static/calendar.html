@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#F6F8F3" />
+<title>Calendar · Social Studio · Runtime Garden</title>
+<link rel="icon" type="image/svg+xml" href="/assets/runtime-garden-favicon.svg" />
+<link rel="stylesheet" href="/studio-online.css" />
+</head>
+<body>
+<div class="shell">
+<header class="topbar">
+  <div class="brand"><img src="/assets/runtime-garden-mark.svg" alt="" width="36" height="36" /><span><b>runtime garden</b><small>SOCIAL STUDIO <span class="soft-tag">v3 ONLINE</span></small></span></div>
+  <div class="top-center"><span class="top-indicator"></span><span class="project-name">Publishing calendar</span><span class="save-indicator" id="opsState">Placeholders from real database state</span></div>
+  <div class="top-actions">
+    <a class="outline" href="/studio/">Studio</a>
+    <a class="outline" href="/content/">Inbox</a>
+    <button class="outline" id="pauseBtn" type="button">Pause publishing</button>
+  </div>
+</header>
+
+<aside class="sidebar">
+  <div class="side-head"><div class="section-kicker">SCHEDULE / MONTH</div><h2>Planned frames.</h2><p class="section-hint">Scheduled variants grouped by UTC day. Nothing here submits — every entry is a placeholder until a provider exists.</p></div>
+  <div class="field"><label for="monthInput">Month</label><input id="monthInput" type="month" value="2026-11" /></div>
+  <div class="field"><label for="tzSelect">Timezone</label><select id="tzSelect"><option value="UTC">UTC</option><option value="America/New_York">America/New_York</option><option value="Europe/Berlin">Europe/Berlin</option></select></div>
+  <div class="side-head"><div class="section-kicker">CHANNELS</div><h2>Per-channel status.</h2></div>
+  <ul class="project-list" id="channelStatus"></ul>
+  <p class="empty-note" id="channelEmpty">Select a scheduled entry to inspect its channels.</p>
+</aside>
+
+<main class="workspace">
+  <div class="work-head">
+    <div><div class="section-kicker">CALENDAR / UTC DAYS</div><h1 id="monthTitle">November 2026</h1><div class="work-sub">Times render in the selected timezone; grouping stays UTC.</div></div>
+    <div class="workspace-badges"><span class="badge-subtle" id="tzBadge">UTC</span></div>
+  </div>
+  <div class="preview-stage">
+    <div class="story-panel">
+      <div id="dayGrid"></div>
+      <p class="empty-note" id="calendarEmpty" hidden>No scheduled variants this month.</p>
+      <h2 class="panel-title">Operations</h2>
+      <h3 class="panel-subtitle">Audit trail</h3>
+      <table class="ops-table"><thead><tr><th>When</th><th>Actor</th><th>Action</th></tr></thead><tbody id="auditTable"></tbody></table>
+      <h3 class="panel-subtitle">Jobs</h3>
+      <table class="ops-table"><thead><tr><th>Kind</th><th>State</th><th>Attempts</th></tr></thead><tbody id="jobsTable"></tbody></table>
+      <p class="empty-note" id="jobsEmpty" hidden>No jobs recorded.</p>
+    </div>
+  </div>
+</main>
+</div>
+
+<script src="/calendar.js"></script>
+</body>
+</html>

@@ -10,6 +10,7 @@ import type { StudioDatabase } from '../db.js';
 import {
   currentVariantSubject,
   getVariant,
+  latestApprovalForVariant,
   verifyVariantApproval,
 } from './content.js';
 
@@ -133,6 +134,7 @@ export interface PublicationStatus {
   bufferState: string | null;
   variantStatus: string;
   approvalValid: boolean;
+  hasApproval: boolean;
 }
 
 /** Per-channel status for one variant, with approval validity from live state. */
@@ -156,6 +158,7 @@ export function getPublicationStatus(
       bufferState: row.bufferState,
       variantStatus: variant.status,
       approvalValid: subject ? verifyVariantApproval(db, variantId, subject) : false,
+      hasApproval: latestApprovalForVariant(db, variantId) !== null,
     };
   });
 }
@@ -165,6 +168,7 @@ export interface ScheduledEntry {
   channelId: string | null;
   scheduledAt: string;
   status: string;
+  text: string;
 }
 
 /** Variants with a schedule inside [from, to] (ISO UTC bounds). */
@@ -174,7 +178,8 @@ export function listScheduled(
 ): ScheduledEntry[] {
   const rows = db
     .prepare(
-      `SELECT pv.id AS variantId, NULL AS channelId, pv.scheduled_at AS scheduledAt, pv.status AS status
+      `SELECT pv.id AS variantId, NULL AS channelId, pv.scheduled_at AS scheduledAt, pv.status AS status,
+              pv.text AS text
        FROM platform_variants pv
        WHERE pv.scheduled_at IS NOT NULL AND pv.scheduled_at >= ? AND pv.scheduled_at <= ?
        ORDER BY pv.scheduled_at ASC`,

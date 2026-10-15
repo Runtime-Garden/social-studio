@@ -96,6 +96,22 @@ button:not(:disabled){transition:background .15s,border .15s,color .15s}
 /* Content Inbox story panel (reuses v2 tokens; strict CSP, no inline styles) */
 .story-panel{width:min(680px,100%);margin:0 auto;display:flex;flex-direction:column;gap:13px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px 26px;box-shadow:var(--shadow);max-height:100%;overflow:auto}
 .panel-title{font-size:15px;letter-spacing:-.02em;margin:6px 0 0}
+.panel-subtitle{font-size:12.5px;margin:8px 0 0;color:var(--muted)}
+.variant-actions{display:flex;gap:8px;flex-wrap:wrap}
+.story-panel .save-indicator{font:11px 'IBM Plex Mono','JetBrains Mono',monospace;color:#8b9a8d}
+#citationList a{color:var(--accent);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+
+/* Calendar grid + ops tables (same tokens, no inline styles) */
+#dayGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
+.day{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:9px 10px;display:flex;flex-direction:column;gap:7px;min-height:64px}
+.day b{font:600 10px 'IBM Plex Mono','JetBrains Mono',monospace;color:var(--muted)}
+.day-entry{background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px 9px;text-align:left;display:flex;flex-direction:column;gap:3px;font-size:11.5px}
+.day-entry:hover{border-color:var(--accent)}
+.day-entry small{font:10px 'IBM Plex Mono','JetBrains Mono',monospace;color:var(--muted)}
+.ops-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.ops-table th{font:600 10px 'IBM Plex Mono','JetBrains Mono',monospace;text-align:left;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--border)}
+.ops-table td{padding:7px 8px;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
+.panel-title{font-size:15px;letter-spacing:-.02em;margin:6px 0 0}
 .variant-actions{display:flex;gap:8px;flex-wrap:wrap}
 .story-panel .save-indicator{font:11px 'IBM Plex Mono','JetBrains Mono',monospace;color:#8b9a8d}
 #citationList a{color:var(--accent);font-size:12px;line-height:1.5;overflow-wrap:anywhere}

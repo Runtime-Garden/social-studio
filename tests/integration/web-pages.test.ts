@@ -91,6 +91,29 @@ describe('app shell pages', () => {
     expect(html).toContain('id="inboxList"');
     expect(html).toContain('id="approveBtn"');
   });
+
+  it('gates /calendar/ behind a session, preserves the month and canonicalizes', async () => {
+    const server = await startTestServer();
+    active = server;
+    const { cookie } = await loginOk(server, ADMIN);
+
+    const bounced = await fetch(`${server.url}/calendar/?month=2026-11`, { redirect: 'manual' });
+    expect(bounced.status).toBe(302);
+    expect(bounced.headers.get('location')).toBe('/login?next=%2Fcalendar%2F%3Fmonth%3D2026-11');
+
+    const bare = await fetch(`${server.url}/calendar`, {
+      headers: { cookie },
+      redirect: 'manual',
+    });
+    expect(bare.status).toBe(302);
+    expect(bare.headers.get('location')).toBe('/calendar/');
+
+    const page = await fetch(`${server.url}/calendar/`, { headers: { cookie } });
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(html).toContain('id="dayGrid"');
+    expect(html).toContain('id="channelStatus"');
+  });
 });
 
 describe('app shell assets', () => {
