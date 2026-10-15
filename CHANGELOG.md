@@ -274,3 +274,55 @@ has zero online dependencies. Full `npm run verify`: smoke `[40, 16, 14336]`,
 - Full `npm run verify` green: smoke `[40, 16, 14336]`; **122
   assertions**; typecheck OK; 28/28 Playwright; standalone sha256
   `d7501b4d…` byte-identical.
+
+### P2 — Projects/revisions API and the online studio editor (commit `3f89959`)
+
+**Added:**
+
+- `/api/v1/projects` (session + CSRF): create, list with strict pagination,
+  fetch with the current revision, append-only revision saves guarded by
+  `expectedRevision` (a stale writer gets 409 `revision_conflict` carrying
+  `currentRevision`), full revision history, fetch one historical revision,
+  and an `attachment` export download. Project JSON is validated and
+  normalized through the shared `restoreProject()` pipeline (v1 imports
+  migrate up; unknown layouts rejected with no partial writes) and
+  re-stamped with the v2 format markers before storage; the row name is a
+  denormalized copy synced on save. Writes append `project.create` /
+  `project.revision_saved` audit events.
+- Web shell: `/` → `/studio/`; `/login` bounces authenticated visitors;
+  `/studio/` is gated server-side and canonicalizes `/studio`. Express 5
+  pattern matching makes a naive `/studio` → `/studio/` pair loop (the bare
+  pattern also matches the slash form), so one array-pattern handler serves
+  both. Static app files plus `/assets` (Design Kit files + the built
+  `studio-core.js`); CSP extended with `img-src 'self' data:` for the
+  embedded Design Kit logos, scripts/styles stay `'self'`-only.
+- Online editor pages (`apps/web/static`, strict CSP: external JS/CSS only,
+  no inline styles; v2 design tokens reused): sign-in with uniform failure
+  copy, project list, cover-frame editor bound to `[data-key="title"]`,
+  explicit revision saves (`Saved revision N` / `Unsaved changes`),
+  immutable history with restore-as-new-revision (history is never
+  rewritten), `.rgstudio.json` export, two-tab stale-writer conflict banner
+  with a reconciling reload action. **No localStorage** — the server owns
+  online state; restore = save-as-new-revision.
+
+**Tested (evidence in this repository):**
+
+- 11 new real-HTTP assertions: `tests/integration/web-projects.test.ts`
+  (auth/CSRF, v1+v2 import through the shared schema, stale-writer 409 with
+  `currentRevision`, immutable history, pagination, export attachment,
+  typed 404s) and `tests/integration/web-pages.test.ts` (root redirect,
+  gated `/studio/`, login bounce, `/studio` canonicalization that pins the
+  Express-5 loop regression, asset content types).
+- 3 new storage assertions (list/count helpers, name sync) and 4 real-browser
+  journeys (`tests/browser/studio-online.spec.ts`): login page incl. wrong
+  credentials, create/edit/save/reload/history/restore with
+  `localStorage.length === 0`, export download (version 2), and a two-tab
+  conflict with reload reconciliation.
+- Mutation checks: combined 8-sabotage run (expectedRevision pass-through,
+  dropped canonical `version`, broken name sync, CSRF removal, gate removal,
+  canonicalization removal, CSP `img-src` removal, `/assets` unmount) failed
+  exactly the 10 aimed tests; a focused browser run (2 sabotages) failed
+  exactly the export-version and conflict journeys. All reverted.
+- Full `npm run verify` green: smoke `[40, 16, 14336]`; **136 assertions**
+  (16 files); typecheck OK; 32/32 Playwright (28 offline + 4 online);
+  standalone sha256 `d7501b4d…` byte-identical (offline v2 untouched).

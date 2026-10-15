@@ -5,7 +5,8 @@ separated: planned / designed / coded / tested / deployed / live-verified.
 Nothing below may be inferred from code merely existing — every "tested" claim
 links to executed evidence.
 
-**Last updated:** 2026-10-15 (P0 complete; **P1 complete** — slices 1–6; P2 next).
+**Last updated:** 2026-10-15 (P0 complete; **P1 complete** — slices 1–6; P2
+in progress — slices 1–3 committed).
 
 ## v2 offline editor (preserved baseline)
 
@@ -169,8 +170,8 @@ standalone sha256 `d7501b4d…` byte-identical.
 |---|---|
 | Planned | yes — `.opencode/RUNTIME_GARDEN_SOCIAL_STUDIO_V3_OPENCODE_IMPLEMENTATION_BLUEPRINT.md` |
 | Designed | yes — blueprint sections 4–14 |
-| Coded | in progress — P2 slice 1 (domain state machines, approval proof, SQLite storage + repos) committed `776f941`; P2 slice 2 (authenticated web skeleton) committed `f2acea3` |
-| Tested | partial — 122 vitest assertions total (unit + real-HTTP integration); no projects API yet |
+| Coded | in progress — P2 slice 1 (domain state machines, approval proof, SQLite storage + repos) committed `776f941`; P2 slice 2 (authenticated web skeleton) committed `f2acea3`; P2 slice 3 (projects/revisions API + online studio editor pages) committed `3f89959` |
+| Tested | partial — 136 vitest assertions total (unit + real-HTTP integration) plus 32 real-browser tests; projects API, online editor journeys, conflict handling and export pinned |
 | Deployed | no |
 | Live-verified | no |
 
@@ -250,6 +251,45 @@ bundle that in-process tests cannot see). Full `npm run verify` green:
 smoke `[40, 16, 14336]`, **122 assertions**, typecheck OK, 28/28
 Playwright, standalone sha256 `d7501b4d…` byte-identical (offline v2
 untouched).
+
+Slice 3 (commit `3f89959`, branch `v3`): **projects/revisions API + the
+online studio editor** (blueprint lines 798–803).
+
+- API `/api/v1/projects` (session + `x-csrf-token` on writes): create, list
+  (strict pagination), fetch, append-only revision saves with
+  `expectedRevision` optimistic control — a stale writer receives 409
+  `revision_conflict` carrying `currentRevision` — revision history, single
+  revision fetch, and `attachment` export. Content goes through the shared
+  `restoreProject()` pipeline (v1 imports migrate up; invalid layouts are
+  400s with no partial writes) and is re-stamped with the v2 `format`/
+  `version` markers for storage. Row `name` is a denormalized copy synced on
+  save; writes append audit events (`project.create`,
+  `project.revision_saved`).
+- App shell: `/` → `/studio/`; `/login` (bounces authed visitors);
+  `/studio/` gated server-side, `/studio` canonicalized. **Regression note:**
+  Express 5 pattern matching makes `/studio` match `/studio/` too, so the
+  initial two-route redirect pair looped forever; a single array-pattern
+  handler now serves both (pinned by an integration assertion). `/assets`
+  serves Design Kit files plus the built `studio-core.js`; CSP gains
+  `img-src 'self' data:` for the embedded logos (scripts/styles remain
+  `'self'`-only).
+- Online editor UI (`apps/web/static`, shared v2 design tokens, strict CSP —
+  external JS/CSS only, no inline styles): sign-in, project list, cover
+  editor, explicit revision saves, immutable history with
+  restore-as-new-revision, export download, stale-writer conflict banner
+  with reload reconciliation. The browser stores nothing online
+  (`localStorage.length === 0` in the journey test); the server owns state.
+
+**Evidence (executed):** 14 new assertions RED→GREEN (11 real-HTTP:
+projects contract + app shell pages/assets; 3 storage repo: list/count/name
+sync) and a 4-journey Playwright spec driving the real login and editor
+pages (incl. a two-tab conflict). Combined 8-sabotage mutation run failed
+exactly the 10 aimed tests (attribution per failing test); a focused
+2-sabotage browser run failed exactly the export-version and conflict
+journeys; all sabotages reverted byte-identical. Full `npm run verify`
+green: smoke `[40, 16, 14336]`, **136 assertions** (16 files), typecheck
+OK, 32/32 Playwright (28 offline + 4 online), standalone sha256
+`d7501b4d…` byte-identical.
 
 ## Evidence environment (P0)
 
