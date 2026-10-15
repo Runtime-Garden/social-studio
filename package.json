@@ -1,0 +1,27 @@
+{
+  "name": "runtime-garden-social-studio",
+  "version": "3.0.0-dev",
+  "private": true,
+  "description": "Runtime Garden Social Studio — v2 offline Canvas editor plus the v3 hybrid workspace (work in progress, not deployed).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "check": "node --check studio.js",
+    "smoke": "node tests/render-smoke.cjs && node tests/series-smoke.cjs",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "build:standalone": "node tools/build-standalone.cjs",
+    "refresh:examples": "node tools/refresh-examples.cjs",
+    "serve": "node tools/serve.cjs",
+    "verify": "npm run check && npm run smoke && npm run typecheck && npm run test && npm run build:standalone && npm run test:browser"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4"
+  }
+}
