@@ -7,36 +7,33 @@
  * limiting, cookie attributes, security headers, error format, health
  * endpoints and restart persistence. No mocks: HTTP client is global fetch.
  */
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { WebConfig } from '../../apps/web/src/config.js';
 import { startServer, type StartedServer } from '../../apps/web/src/server.js';
 import { listAuditEvents } from '../../packages/storage/src/repos/audit.js';
+import {
+  ADMIN,
+  cleanupTempDirs,
+  cookiePair,
+  getJson,
+  loginAttempt,
+  loginOk,
+  rawCookie,
+  registerTempDir,
+  startTestServer,
+  type ErrorBody,
+  type LoginBody,
+} from './helpers.js';
 
-const ADMIN = { username: 'owner', password: 'test-admin-passphrase' };
 const DEFAULT_TTL_MS = 12 * 60 * 60 * 1000;
 
-interface ErrorBody {
-  error: { code: string; message: string };
-}
-interface UserBody {
-  id: string;
-  username: string;
-  role: string;
-}
-interface LoginBody {
-  user: UserBody;
-  csrfToken: string;
-  expiresAt: string;
-}
-
 let active: StartedServer | null = null;
-const tempDirs: string[] = [];
 
 async function start(overrides: Partial<WebConfig> = {}): Promise<StartedServer> {
-  active = await startServer({ dbPath: ':memory:', port: 0, adminBootstrap: { ...ADMIN }, ...overrides });
+  active = await startTestServer(overrides);
   return active;
 }
 
@@ -45,45 +42,8 @@ afterEach(async () => {
     await active.close();
     active = null;
   }
-  for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  cleanupTempDirs();
 });
-
-function setCookies(res: Response): string[] {
-  return res.headers.getSetCookie();
-}
-
-function cookiePair(res: Response, name = 'rg_session'): string {
-  const found = setCookies(res).find((cookie) => cookie.startsWith(`${name}=`));
-  if (!found) throw new Error(`missing ${name} cookie; got: ${setCookies(res).join(' | ')}`);
-  return found.split(';')[0]!;
-}
-
-function rawCookie(res: Response, name = 'rg_session'): string {
-  const found = setCookies(res).find((cookie) => cookie.startsWith(`${name}=`));
-  if (!found) throw new Error(`missing ${name} cookie; got: ${setCookies(res).join(' | ')}`);
-  return found;
-}
-
-function loginAttempt(
-  server: StartedServer,
-  credentials: { username: string; password: string } = ADMIN,
-): Promise<Response> {
-  return fetch(`${server.url}/api/v1/auth/login`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(credentials),
-  });
-}
-
-async function loginOk(
-  server: StartedServer,
-  credentials: { username: string; password: string } = ADMIN,
-): Promise<{ cookie: string; csrfToken: string; body: LoginBody; res: Response }> {
-  const res = await loginAttempt(server, credentials);
-  expect(res.status).toBe(200);
-  const body = (await res.json()) as LoginBody;
-  return { cookie: cookiePair(res), csrfToken: body.csrfToken, body, res };
-}
 
 describe('auth lifecycle', () => {
   it('bootstraps the admin and completes login/me/logout with audit trail', async () => {
@@ -279,6 +239,9 @@ describe('request hygiene and errors', () => {
     expect(live.headers.get('x-frame-options')).toBe('DENY');
     expect(live.headers.get('referrer-policy')).toBe('no-referrer');
     expect(live.headers.get('content-security-policy')).toContain("default-src 'self'");
+    // The Design Kit v2 logos are embedded as data: URIs (brand-embedded.js);
+    // without this the online editor would silently lose its branding.
+    expect(live.headers.get('content-security-policy')).toContain("img-src 'self' data:");
     expect(live.headers.get('x-powered-by')).toBeNull();
 
     const missing = await fetch(`${server.url}/api/v1/does-not-exist`);
@@ -338,7 +301,7 @@ describe('bootstrap and persistence', () => {
 
   it('skips bootstrap when users exist and preserves sessions across restarts', async () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'rgstudio-web-'));
-    tempDirs.push(dir);
+    registerTempDir(dir);
     const dbPath = path.join(dir, 'studio.sqlite');
 
     const first = await startServer({

@@ -26,11 +26,22 @@ export interface WebConfig {
   adminBootstrap?: { username: string; password: string };
   /** Directory containing NNNN_name.sql migrations. */
   migrationsDir: string;
+  /** Directory containing the web app's own pages and scripts. */
+  staticDir: string;
+  /** Directory containing the Design Kit v2 brand assets served under /assets. */
+  assetsDir: string;
+  /** The built studio-core bundle served as /assets/studio-core.js. */
+  studioCoreFile: string;
 }
 
 // Resolves to <repo>/migrations from both apps/web/src (tests/dev) and
 // apps/web/dist (bundled), because both sit two directories under the app root.
 const DEFAULT_MIGRATIONS_DIR = fileURLToPath(new URL('../../../migrations', import.meta.url));
+const DEFAULT_STATIC_DIR = fileURLToPath(new URL('../static', import.meta.url));
+const DEFAULT_ASSETS_DIR = fileURLToPath(new URL('../../../assets', import.meta.url));
+const DEFAULT_STUDIO_CORE_FILE = fileURLToPath(
+  new URL('../../../packages/studio-core/dist/studio-core.js', import.meta.url),
+);
 
 const DEFAULT_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
@@ -71,5 +82,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WebConfig {
         ? { username, password }
         : undefined,
     migrationsDir: env.RG_MIGRATIONS_DIR ?? DEFAULT_MIGRATIONS_DIR,
+    staticDir: DEFAULT_STATIC_DIR,
+    assetsDir: DEFAULT_ASSETS_DIR,
+    studioCoreFile: DEFAULT_STUDIO_CORE_FILE,
   };
 }

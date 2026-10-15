@@ -3,11 +3,14 @@
  *
  * Plain API responses only for now; the CSP is deliberately restrictive and
  * applies to every response including future HTML. No inline scripts, no
- * framing, no referrer leakage.
+ * framing, no referrer leakage. `img-src` additionally allows `data:` URIs
+ * because the Design Kit v2 logos are embedded as data: images
+ * (assets/brand-embedded.js); scripts and styles remain 'self'-only.
  */
 import type { NextFunction, Request, Response } from 'express';
 
-const CSP = "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
+const CSP =
+  "default-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 
 export function securityHeaders(_req: Request, res: Response, next: NextFunction): void {
   res.set('x-content-type-options', 'nosniff');

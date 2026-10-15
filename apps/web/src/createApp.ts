@@ -4,7 +4,9 @@
  * One JSON error shape everywhere: `{ error: { code, message } }`. The JSON
  * body cap is 64kb; malformed and oversized bodies map to stable codes.
  * Middleware order matters: security headers, body parsing, session
- * resolution, routes, 404, error handler last.
+ * resolution, routes, 404, error handler last. Slice 3b adds the app shell:
+ * page routes (login/studio gating), the web app's own static files and the
+ * shared /assets bundle (Design Kit files + built studio-core).
  */
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import type { StudioDatabase } from '../../../packages/storage/src/db.js';
@@ -13,6 +15,8 @@ import { securityHeaders } from './middleware/security.js';
 import { sessionMiddleware } from './middleware/session.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createHealthRouter } from './routes/health.js';
+import { createAssetRouter, createPagesRouter } from './routes/pages.js';
+import { createProjectsRouter } from './routes/projects.js';
 
 export interface CreateAppOptions {
   db: StudioDatabase;
@@ -28,6 +32,11 @@ export function createApp({ db, config }: CreateAppOptions): Express {
 
   app.use('/health', createHealthRouter({ db }));
   app.use('/api/v1/auth', createAuthRouter({ db, config }));
+  app.use('/api/v1/projects', createProjectsRouter({ db }));
+
+  app.use(createPagesRouter(config));
+  app.use(express.static(config.staticDir, { index: false }));
+  app.use('/assets', createAssetRouter(config));
 
   app.use((req: Request, res: Response) => {
     res

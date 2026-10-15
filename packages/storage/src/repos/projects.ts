@@ -138,6 +138,8 @@ export function createProject(
 export interface SaveRevisionInput {
   expectedRevision: number;
   projectJson: string;
+  /** When present, refreshes the denormalized project name (source of truth stays the JSON). */
+  name?: string;
   schemaVersion?: number;
   editorVersion?: string;
   now?: number;
@@ -175,8 +177,10 @@ export function saveRevision(
       now,
     );
     db.prepare(
-      'UPDATE studio_projects SET latest_revision = ?, current_revision_id = ?, updated_at = ? WHERE id = ?',
-    ).run(revision, revisionId, now, projectId);
+      `UPDATE studio_projects
+       SET latest_revision = ?, current_revision_id = ?, updated_at = ?, name = COALESCE(?, name)
+       WHERE id = ?`,
+    ).run(revision, revisionId, now, input.name ?? null, projectId);
     db.exec('COMMIT');
     return {
       id: revisionId,
@@ -220,4 +224,39 @@ export function listRevisions(
     )
     .all(projectId, limit, offset) as Array<Parameters<typeof mapRevision>[0]>;
   return rows.map(mapRevision);
+}
+
+export function getRevision(
+  db: StudioDatabase,
+  projectId: string,
+  revision: number,
+): ProjectRevisionRow | null {
+  const row = db
+    .prepare('SELECT * FROM project_revisions WHERE project_id = ? AND revision = ?')
+    .get(projectId, revision) as Parameters<typeof mapRevision>[0] | undefined;
+  return row ? mapRevision(row) : null;
+}
+
+export function countRevisions(db: StudioDatabase, projectId: string): number {
+  const row = db
+    .prepare('SELECT COUNT(*) AS n FROM project_revisions WHERE project_id = ?')
+    .get(projectId) as { n: number };
+  return row.n;
+}
+
+export function listProjects(
+  db: StudioDatabase,
+  { limit = 20, offset = 0 }: { limit?: number; offset?: number } = {},
+): ProjectRow[] {
+  const rows = db
+    .prepare(
+      'SELECT * FROM studio_projects ORDER BY updated_at DESC, rowid DESC LIMIT ? OFFSET ?',
+    )
+    .all(limit, offset) as Array<Parameters<typeof mapProject>[0]>;
+  return rows.map(mapProject);
+}
+
+export function countProjects(db: StudioDatabase): number {
+  const row = db.prepare('SELECT COUNT(*) AS n FROM studio_projects').get() as { n: number };
+  return row.n;
 }

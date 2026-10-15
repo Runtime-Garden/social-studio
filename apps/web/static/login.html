@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#F6F8F3" />
+<title>Sign in · Social Studio · Runtime Garden</title>
+<link rel="icon" type="image/svg+xml" href="/assets/runtime-garden-favicon.svg" />
+<link rel="stylesheet" href="/studio-online.css" />
+</head>
+<body class="auth-body">
+<main class="auth-card">
+  <div class="auth-brand"><img src="/assets/runtime-garden-mark.svg" alt="" width="42" height="42" /><span><b>runtime garden</b><small>SOCIAL STUDIO <span class="soft-tag">v3 ONLINE</span></small></span></div>
+  <h1>Social Studio</h1>
+  <p class="auth-sub">The offline editor stays yours. This is the online workspace: explicit server revisions, immutable history and the same Design Kit v2 canvas.</p>
+  <form id="loginForm" novalidate>
+    <div class="field"><label for="username">Username</label><input id="username" name="username" autocomplete="username" spellcheck="false" required /></div>
+    <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required /></div>
+    <button class="primary full" id="loginBtn" type="submit">Sign in</button>
+  </form>
+  <p class="auth-error" id="loginError" role="alert" hidden></p>
+  <p class="auth-foot">No sign-up. Accounts are created by the studio owner.</p>
+</main>
+<script src="/login.js"></script>
+</body>
+</html>

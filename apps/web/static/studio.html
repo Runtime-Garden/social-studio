@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#F6F8F3" />
+<title>Studio · Social Studio · Runtime Garden</title>
+<link rel="icon" type="image/svg+xml" href="/assets/runtime-garden-favicon.svg" />
+<link rel="stylesheet" href="/studio-online.css" />
+</head>
+<body>
+<div class="shell">
+<header class="topbar">
+  <div class="brand"><img src="/assets/runtime-garden-mark.svg" alt="" width="36" height="36" /><span><b>runtime garden</b><small>SOCIAL STUDIO <span class="soft-tag">v3 ONLINE</span></small></span></div>
+  <div class="top-center"><span class="top-indicator"></span><span class="project-name" id="projectNameLabel">No project open</span><span class="save-indicator" id="saveState">Connecting…</span></div>
+  <div class="top-actions">
+    <span class="user-badge" id="userBadge"></span>
+    <button class="outline" id="newProjectBtn" type="button">New project</button>
+    <button class="outline" id="saveBtn" type="button">Save revision</button>
+    <button class="outline" id="exportBtn" type="button">Export .rgstudio.json</button>
+    <button class="ghost" id="logoutBtn" type="button">Sign out</button>
+  </div>
+</header>
+
+<aside class="sidebar">
+  <div class="side-head"><div class="section-kicker">PROJECTS / SERVER</div><h2>Server revisions.</h2><p class="section-hint">Every project lives as immutable revisions on the server. The browser stores nothing.</p></div>
+  <ul class="project-list" id="projectList"></ul>
+  <p class="empty-note" id="projectEmpty" hidden>No projects yet — create the first one.</p>
+</aside>
+
+<main class="workspace">
+  <div class="work-head">
+    <div><div class="section-kicker">CANVAS / LIVE PREVIEW</div><h1 id="layoutName">Online Studio</h1><div class="work-sub">Design Kit v2 rendering · shared studio-core</div></div>
+    <div class="workspace-badges"><span id="formatPill">1080 × 1350</span><span class="badge-subtle" id="headBadge">no revision</span></div>
+  </div>
+  <div class="conflict-banner" id="conflictBanner" role="alert" hidden>
+    <span id="conflictText"></span>
+    <button class="outline" id="reloadHeadBtn" type="button">Reload from server</button>
+  </div>
+  <div class="preview-stage"><div class="canvas-holder"><canvas id="studioCanvas" width="1080" height="1350" role="img" aria-label="Live social media composition preview"></canvas></div></div>
+</main>
+
+<aside class="sidebar inspector">
+  <div class="side-head"><div class="section-kicker">INSPECTOR</div><h2>Edit &amp; history.</h2></div>
+  <div class="inspector-tabs"><button id="editTab" type="button" class="selected">Edit</button><button id="historyTab" type="button">History</button></div>
+  <div class="inspector-panel" id="editPanel"></div>
+  <div class="inspector-panel" id="historyPanel" hidden><ul class="revision-list" id="revisionList"></ul><p class="empty-note" id="revisionEmpty" hidden>No revision history yet.</p></div>
+  <div class="inspector-bottom"><p class="tiny-note">Saving appends a revision. Restoring is a new revision too — history is never rewritten.</p></div>
+</aside>
+</div>
+
+<script src="/assets/studio-core.js"></script>
+<script src="/assets/brand-embedded.js"></script>
+<script src="/studio-online.js"></script>
+</body>
+</html>

@@ -25,8 +25,12 @@ import {
 } from '../../packages/storage/src/repos/sessions.js';
 import {
   OptimisticConcurrencyError,
+  countProjects,
+  countRevisions,
   createProject,
   getProject,
+  getRevision,
+  listProjects,
   listRevisions,
   saveRevision,
 } from '../../packages/storage/src/repos/projects.js';
@@ -186,6 +190,52 @@ describe('studio projects with optimistic revision control', () => {
     const revisions = listRevisions(db, created.project.id);
     expect(revisions[0]!.projectJson).toContain('edited');
     expect(revisions[1]!.projectJson).toContain('original');
+  });
+
+  it('lists projects most-recently-updated first with windowing and totals', () => {
+    createProject(db, { name: 'Alpha', projectJson: projectJson('a'), now: 1_000_000 });
+    createProject(db, { name: 'Bravo', projectJson: projectJson('b'), now: 2_000_000 });
+    createProject(db, { name: 'Charlie', projectJson: projectJson('c'), now: 3_000_000 });
+    expect(countProjects(db)).toBe(3);
+    expect(listProjects(db, { limit: 2, offset: 0 }).map((p) => p.name)).toEqual([
+      'Charlie',
+      'Bravo',
+    ]);
+    expect(listProjects(db, { limit: 2, offset: 2 }).map((p) => p.name)).toEqual(['Alpha']);
+    expect(listProjects(db, { limit: 10, offset: 10 })).toEqual([]);
+  });
+
+  it('fetches one historical revision by number', () => {
+    const created = createProject(db, {
+      name: 'P',
+      projectJson: projectJson('original'),
+      now: 1_000_000,
+    });
+    saveRevision(db, created.project.id, {
+      expectedRevision: 1,
+      projectJson: projectJson('edited'),
+    });
+    expect(countRevisions(db, created.project.id)).toBe(2);
+    expect(getRevision(db, created.project.id, 1)?.projectJson).toContain('original');
+    expect(getRevision(db, created.project.id, 99)).toBeNull();
+    expect(getRevision(db, 'missing-project', 1)).toBeNull();
+  });
+
+  it('keeps the denormalized project name in sync when a save carries one', () => {
+    const created = createProject(db, {
+      name: 'Old name',
+      projectJson: projectJson('x'),
+      now: 1_000_000,
+    });
+    saveRevision(db, created.project.id, {
+      expectedRevision: 1,
+      projectJson: projectJson('y'),
+      name: 'New name',
+    });
+    expect(getProject(db, created.project.id)?.project.name).toBe('New name');
+    // A save without a name leaves the row name unchanged.
+    saveRevision(db, created.project.id, { expectedRevision: 2, projectJson: projectJson('z') });
+    expect(getProject(db, created.project.id)?.project.name).toBe('New name');
   });
 });
 
