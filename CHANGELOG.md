@@ -378,3 +378,51 @@ has zero online dependencies. Full `npm run verify`: smoke `[40, 16, 14336]`,
   state display bugs fixed RED→GREEN in commit `cb91c89` (rejected story
   re-rendered as "Approved snapshot" on reload; Approve ignored unsaved
   textarea text) with six minors deferred to the ledger.
+
+### P2 — Calendar, ops viewers UI and Compose dev stack (commits `721774b`, `3618e81`, `f908bb0`, `ae1770d`, `5c68877`) — **P2 complete**
+
+**Added:**
+
+- `packages/storage/src/repos/scheduling.ts`: durable job leases (single
+  conditional `UPDATE` — a live lease updates 0 rows), completion states,
+  publications with **live approval validity** (`getPublicationStatus`
+  re-derives the domain approval subject from current variant state, so an
+  edit flips `approvalValid` to false), and scheduled-variant listing.
+- `/api/v1/schedule` (session-read-only): calendar entries grouped by UTC
+  day with timezone rendering (unknown IANA names fall back to UTC), a
+  93-day span cap protecting the event loop, and per-channel publication
+  status. No submit path — publication stays gated upstream.
+- `/calendar/` UI: month grid of scheduled placeholders, timezone and
+  month selectors, per-channel status with `no approval / approval valid /
+  stale`, live audit and jobs tables, and the pause control. Strict CSP;
+  failed fetches render an error state distinct from empty.
+- Local dev stack: multi-stage `Dockerfile` (build stage produces the
+  esbuild bundles the entrypoint needs), `.dockerignore`, `compose.yaml`
+  (`RG_PORT` mapped to the same container port, named volume for
+  `/app/data`), `.env.example` with all `RG_*` variables, and
+  `tools/seed-fixtures.cjs` (`npm run seed`) which is **idempotent** by
+  construction and seeds a story/variant/project whose approval hash is
+  the real canonical hash, so a fresh stack reports a *valid* approval.
+
+**Tested (evidence in this repository):**
+
+- 26 new assertions RED→GREEN (4 scheduling repos, 5 schedule API, 2 seed)
+  plus 6 browser journeys: gating/canonicalization, scheduled entry on its
+  UTC day, approval→valid→stale across an edit, empty-month state,
+  unknown-timezone fallback, audit/jobs tables + pause.
+- Fresh whole-range review returned *With fixes*; all Critical/Important
+  findings fixed RED→GREEN in `5c68877` (Docker build stage + `.dockerignore`,
+  port mapping, calendar range cap, seeded approval hash coherence, fetch
+  failure vs. empty, atomic lease, jobs repo dedupe) plus minors
+  (query-preserving redirect, current-month default, CSS duplication).
+- Mutation checks: 4 sabotage classes each failed exactly their aimed
+  tests (guard bypass, pause-inverts, gate removal, validity drift), all
+  reverted byte-identical.
+- Full `npm run verify` green: smoke `[40, 16, 14336]`; **170 assertions**
+  (22 files); typecheck OK; 45/45 Playwright; standalone sha256
+  `d7501b4d…` byte-identical.
+- **Documented limitation:** the Docker image is verified by construction
+  (multi-stage build, non-root user, healthcheck) and by `docker`-free
+  checks only — no Docker daemon exists in this environment, so no
+  `docker build`/`compose up` has been executed here. A CI `docker build`
+  step is required before any deployment claim.

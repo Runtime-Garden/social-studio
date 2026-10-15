@@ -5,8 +5,8 @@ separated: planned / designed / coded / tested / deployed / live-verified.
 Nothing below may be inferred from code merely existing — every "tested" claim
 links to executed evidence.
 
-**Last updated:** 2026-10-15 (P0 complete; **P1 complete** — slices 1–6; P2
-in progress — slices 1–4 committed).
+**Last updated:** 2026-10-16 (P0 complete; **P1 complete**; **P2 complete** —
+slices 1–5; P3+ credential-blocked).
 
 ## v2 offline editor (preserved baseline)
 
@@ -170,8 +170,8 @@ standalone sha256 `d7501b4d…` byte-identical.
 |---|---|
 | Planned | yes — `.opencode/RUNTIME_GARDEN_SOCIAL_STUDIO_V3_OPENCODE_IMPLEMENTATION_BLUEPRINT.md` |
 | Designed | yes — blueprint sections 4–14 |
-| Coded | in progress — P2 slices 1–4 committed (domain/storage `776f941`, web skeleton `f2acea3`, projects API + online editor `3f89959`, content/approvals/ops `fbfcde8`…`6794c22`) |
-| Tested | partial — 158 vitest assertions total (unit + real-HTTP integration) plus 37 real-browser tests; projects API, online editor, inbox, approvals, policy gate and pause pinned |
+| Coded | complete for P0–P2 — domain/storage `776f941`, web skeleton `f2acea3`, projects API + online editor `3f89959`, content/approvals/ops `fbfcde8`…`6794c22`, calendar/ops UI/Compose `721774b`…`5c68877` |
+| Tested | 170 vitest assertions (unit + real-HTTP integration) plus 45 real-browser tests; P2 DoD clauses met (revise/reload, inspect, approve/reject with zero outbound, edit revokes, restart-preserving) |
 | Deployed | no |
 | Live-verified | no |
 
@@ -185,7 +185,7 @@ standalone sha256 `d7501b4d…` byte-identical.
 - VPS deployment access — not touched. Deployment is **not planned** without
   explicit owner approval (blueprint mandates staging evidence first).
 
-## P2 — Online authenticated app + persistence (in progress)
+## P2 — Online authenticated app + persistence (complete)
 
 Slice 1 (commit `776f941`, branch `v3`): **domain + storage foundation**.
 
