@@ -17,7 +17,12 @@
  *   (catches "small area, huge change" like swapped text or moved elements).
  *
  * Measured reference points:
- * - Chromium: noise is exactly 0 across repeated runs; strict bounds below.
+ * - Chromium: calibration measured exactly 0 noise; a rare second glyph-AA
+ *   state was observed later during a full `npm run verify` (289 px = 0.02%,
+ *   max delta 57, sparse edges on the headline band) and did not reproduce on
+ *   immediate re-run. Same class of phenomenon as firefox; bound 96 keeps a
+ *   1.68x margin over the observation while staying far below real content
+ *   changes (mutation: delta 224).
  * - Firefox: glyph edges (system fallback fonts, title bands) occasionally
  *   rasterize in a second stable AA state - observed outliers ~1,000px
  *   (0.07% of 1.08M) with max delta 68. Real content changes measure ~1.6%
@@ -48,6 +53,7 @@ const DEFAULT_TOLERANCE: GoldenTolerance = {
 
 /** Engine-specific overrides; see tolerance policy above. */
 const ENGINE_TOLERANCE_OVERRIDES: Record<string, Partial<GoldenTolerance>> = {
+  chromium: { maxChannelDelta: 96 },
   firefox: { maxChannelDelta: 96 },
 };
 
