@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, v3]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check (v2 editor)
+        run: npm run check
+
+      - name: Mock Canvas + series smoke tests (v2 regression)
+        run: npm run smoke
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build standalone offline artifact
+        run: npm run build:standalone
+
+      - name: Verify committed standalone artifact is current and deterministic
+        run: git diff --exit-code -- Runtime_Garden_Social_Studio_v2_Standalone.html
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Real-browser tests (Chromium)
+        run: npm run test:browser
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            test-results/
+          retention-days: 7
