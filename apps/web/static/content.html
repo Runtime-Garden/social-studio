@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#F6F8F3" />
+<title>Content · Social Studio · Runtime Garden</title>
+<link rel="icon" type="image/svg+xml" href="/assets/runtime-garden-favicon.svg" />
+<link rel="stylesheet" href="/studio-online.css" />
+</head>
+<body>
+<div class="shell">
+<header class="topbar">
+  <div class="brand"><img src="/assets/runtime-garden-mark.svg" alt="" width="36" height="36" /><span><b>runtime garden</b><small>SOCIAL STUDIO <span class="soft-tag">v3 ONLINE</span></small></span></div>
+  <div class="top-center"><span class="top-indicator"></span><span class="project-name">Content Inbox</span><span class="save-indicator" id="opsState">Publishing paused by default</span></div>
+  <div class="top-actions">
+    <a class="outline" href="/studio/">Studio</a>
+    <button class="outline" id="pauseBtn" type="button">Pause publishing</button>
+  </div>
+</header>
+
+<aside class="sidebar">
+  <div class="side-head"><div class="section-kicker">INBOX / STORIES</div><h2>Read-only inbox.</h2><p class="section-hint">Stories arrive with their sources attached. Nothing here publishes.</p></div>
+  <ul class="project-list" id="inboxList"></ul>
+  <p class="empty-note" id="inboxEmpty" hidden>No stories in the inbox yet.</p>
+</aside>
+
+<main class="workspace">
+  <div class="work-head">
+    <div><div class="section-kicker">STORY / REVIEW</div><h1 id="storyTitle">No story selected</h1><div class="work-sub">Every claim carries its citation.</div></div>
+    <div class="workspace-badges"><span class="badge-subtle" id="storyState">—</span></div>
+  </div>
+  <div class="preview-stage">
+    <div class="story-panel">
+      <h2 class="panel-title">Sources &amp; evidence</h2>
+      <ul class="revision-list" id="citationList"></ul>
+      <p class="empty-note" id="citationEmpty" hidden>No verified sources attached to this story.</p>
+      <h2 class="panel-title">Platform variant</h2>
+      <div class="field"><label for="variantText">Variant text</label><textarea id="variantText" rows="4" maxlength="15000"></textarea></div>
+      <div class="variant-actions">
+        <button class="primary" id="approveBtn" type="button">Approve snapshot</button>
+        <button class="outline" id="rejectBtn" type="button">Reject</button>
+        <button class="outline" id="saveTextBtn" type="button">Save text</button>
+      </div>
+      <p class="save-indicator" id="approvalState">No approval recorded.</p>
+    </div>
+  </div>
+</main>
+</div>
+
+<script src="/content.js"></script>
+</body>
+</html>

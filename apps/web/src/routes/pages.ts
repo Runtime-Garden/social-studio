@@ -44,6 +44,22 @@ export function createPagesRouter(config: WebConfig): Router {
     sendPage(res, 'studio.html');
   });
 
+  // Same Express-5 canonicalization shape as /studio (see above).
+  // The bounce carries ?next= so the sign-in page can return here; the
+  // /studio/ bounce stays a bare /login because /studio/ is already the
+  // default post-login target (pinned by web-pages tests).
+  router.get(['/content', '/content/'], (req, res) => {
+    if (!getAuth(req)) {
+      res.redirect('/login?next=/content/');
+      return;
+    }
+    if (req.path === '/content') {
+      res.redirect('/content/');
+      return;
+    }
+    sendPage(res, 'content.html');
+  });
+
   return router;
 }
 

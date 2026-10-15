@@ -288,6 +288,16 @@ export function getVariant(db: StudioDatabase, id: string): VariantRow | null {
   return row ? mapVariant(row) : null;
 }
 
+export function listVariantsForContent(db: StudioDatabase, contentItemId: string): VariantRow[] {
+  const rows = db
+    .prepare(
+      `SELECT * FROM platform_variants WHERE content_item_id = ?
+       ORDER BY created_at DESC, rowid DESC`,
+    )
+    .all(contentItemId) as Array<Parameters<typeof mapVariant>[0]>;
+  return rows.map(mapVariant);
+}
+
 export function updateVariantText(
   db: StudioDatabase,
   id: string,

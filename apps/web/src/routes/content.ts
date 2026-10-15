@@ -14,6 +14,7 @@ import {
   getVariant,
   latestApprovalForVariant,
   listContentItems,
+  listVariantsForContent,
   saveApproval,
   setVariantStatus,
   sourceIdsForContent,
@@ -84,6 +85,23 @@ export function createContentRouter({ db }: { db: StudioDatabase }): Router {
       return;
     }
     res.status(200).json(found);
+  });
+
+  router.get('/items/:id/variants', (req, res) => {
+    const found = getContentItem(db, stringParam(req, 'id'));
+    if (!found) {
+      res.status(404).json({ error: { code: 'content_not_found', message: 'No such story' } });
+      return;
+    }
+    res.status(200).json({
+      variants: listVariantsForContent(db, found.item.id).map((v) => ({
+        id: v.id,
+        platform: v.platform,
+        revision: v.revision,
+        text: v.text,
+        status: v.status,
+      })),
+    });
   });
 
   router.post('/items/:id/transition', requireCsrf, (req, res) => {

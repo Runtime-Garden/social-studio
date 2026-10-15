@@ -1,10 +1,21 @@
 /* Runtime Garden Social Studio · online sign-in (P2 slice 3b).
-   Posts to the JSON auth API and hands off to the gated editor page. */
+   Posts to the JSON auth API and hands off to the gated editor page.
+   Slice 4: honors a same-origin ?next= target (set by gated pages like
+   /content/) so sign-in returns where the bounce came from. */
 'use strict';
 (function () {
   var form = document.getElementById('loginForm');
   var error = document.getElementById('loginError');
   var button = document.getElementById('loginBtn');
+
+  function safeNextTarget() {
+    var params = new URLSearchParams(window.location.search);
+    var next = params.get('next') || '/studio/';
+    if (next.charAt(0) !== '/' || next.indexOf('//') !== -1 || next.indexOf('\\') !== -1) {
+      return '/studio/';
+    }
+    return next;
+  }
 
   form.addEventListener('submit', function (event) {
     event.preventDefault();
@@ -20,7 +31,7 @@
     })
       .then(function (response) {
         if (response.ok) {
-          window.location.assign('/studio/');
+          window.location.assign(safeNextTarget());
           return;
         }
         if (response.status === 401) {

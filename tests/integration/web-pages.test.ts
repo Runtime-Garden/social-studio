@@ -68,6 +68,29 @@ describe('app shell pages', () => {
     expect(html).toContain('id="studioCanvas"');
     expect(html).toContain('id="newProjectBtn"');
   });
+
+  it('gates /content/ behind a session and canonicalizes /content', async () => {
+    const server = await startTestServer();
+    active = server;
+    const { cookie } = await loginOk(server, ADMIN);
+
+    const bounced = await fetch(`${server.url}/content/`, { redirect: 'manual' });
+    expect(bounced.status).toBe(302);
+    expect(bounced.headers.get('location')).toBe('/login?next=/content/');
+
+    const bare = await fetch(`${server.url}/content`, {
+      headers: { cookie },
+      redirect: 'manual',
+    });
+    expect(bare.status).toBe(302);
+    expect(bare.headers.get('location')).toBe('/content/');
+
+    const page = await fetch(`${server.url}/content/`, { headers: { cookie } });
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(html).toContain('id="inboxList"');
+    expect(html).toContain('id="approveBtn"');
+  });
 });
 
 describe('app shell assets', () => {

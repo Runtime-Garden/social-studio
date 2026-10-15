@@ -93,5 +93,12 @@ button:not(:disabled){transition:background .15s,border .15s,color .15s}
 .revision-item small{font:10px 'IBM Plex Mono','JetBrains Mono',monospace;color:var(--muted)}
 .inspector-bottom{margin-top:auto;border-top:1px solid var(--border);padding-top:13px}
 
+/* Content Inbox story panel (reuses v2 tokens; strict CSP, no inline styles) */
+.story-panel{width:min(680px,100%);margin:0 auto;display:flex;flex-direction:column;gap:13px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px 26px;box-shadow:var(--shadow);max-height:100%;overflow:auto}
+.panel-title{font-size:15px;letter-spacing:-.02em;margin:6px 0 0}
+.variant-actions{display:flex;gap:8px;flex-wrap:wrap}
+.story-panel .save-indicator{font:11px 'IBM Plex Mono','JetBrains Mono',monospace;color:#8b9a8d}
+#citationList a{color:var(--accent);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+
 @media(max-width:1180px){.shell{grid-template-columns:250px minmax(360px,1fr) 290px}.project-name{max-width:150px}}
 @media(max-width:900px){.shell{grid-template-columns:1fr;grid-template-rows:auto auto minmax(0,1fr) auto;height:auto;min-height:100dvh}.topbar{flex-wrap:wrap;padding:12px 16px;gap:10px}.sidebar{border-right:0;border-bottom:1px solid var(--border);max-height:none}.sidebar.inspector{border-left:0}.preview-stage{min-height:420px}.canvas-holder{height:auto}#studioCanvas{max-height:70dvh}}

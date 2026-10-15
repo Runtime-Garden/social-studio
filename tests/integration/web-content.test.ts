@@ -270,4 +270,45 @@ describe('variant approval flow', () => {
       ),
     ).toBe(true);
   });
+
+  it('lists variants for one content item', async () => {
+    const server = await started();
+    const login = await loginOk(server);
+
+    const source = createSource(server.db, {
+      type: 'manual',
+      url: 'https://example.com/alpha',
+      label: 'Alpha',
+    });
+    const item = createSourceItem(server.db, {
+      sourceId: source.id,
+      guid: 'guid-alpha',
+      canonicalUrl: 'https://example.com/posts/alpha',
+      title: 'Alpha post',
+      summary: 'Alpha summary',
+    });
+    const cluster = createCluster(server.db, { title: 'Alpha cluster' });
+    linkItemToCluster(server.db, cluster.id, item.id, 'member');
+    const content = createContentItem(server.db, {
+      kind: 'manual',
+      title: 'Alpha story',
+      clusterId: cluster.id,
+      sourceItemId: item.id,
+    });
+    const variant = createVariant(server.db, {
+      contentItemId: content.id,
+      platform: 'linkedin',
+      text: 'Hello network',
+    });
+
+    const res = await getJson(server, `/api/v1/content/items/${content.id}/variants`, {
+      cookie: login.cookie,
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      variants: Array<{ id: string; platform: string; revision: number }>;
+    };
+    expect(body.variants.map((v) => v.id)).toContain(variant.id);
+    expect(body.variants[0]?.platform).toBe('linkedin');
+  });
 });
