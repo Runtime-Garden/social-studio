@@ -7,6 +7,7 @@
  * machine (`canTransitionContent`); approval binding lives in Task 3.
  */
 import { canTransitionContent } from '../../../domain/src/lifecycle.js';
+import { verifyApproval } from '../../../domain/src/approval.js';
 import { newId } from '../ids.js';
 import type { StudioDatabase } from '../db.js';
 
@@ -238,6 +239,7 @@ export interface VariantRow {
   revision: number;
   text: string;
   status: string;
+  scheduledAt: string | null;
 }
 
 const mapVariant = (row: {
@@ -247,6 +249,7 @@ const mapVariant = (row: {
   revision: number;
   text: string;
   status: string;
+  scheduled_at: string | null;
 }): VariantRow => ({
   id: row.id,
   contentItemId: row.content_item_id,
@@ -254,6 +257,7 @@ const mapVariant = (row: {
   revision: row.revision,
   text: row.text,
   status: row.status,
+  scheduledAt: row.scheduled_at,
 });
 
 export function createVariant(
@@ -273,6 +277,7 @@ export function createVariant(
     revision: 1,
     text: input.text ?? '',
     status: 'draft',
+    scheduledAt: null,
   };
 }
 
@@ -297,4 +302,129 @@ export function updateVariantText(
      SET text = ?, revision = ?, status = 'draft', updated_at = ? WHERE id = ?`,
   ).run(text, revision, nowIso(now), id);
   return { id, revision, status: 'draft' };
+}
+
+export function setVariantStatus(
+  db: StudioDatabase,
+  id: string,
+  status: string,
+  { now }: { now?: number } = {},
+): void {
+  db.prepare('UPDATE platform_variants SET status = ?, updated_at = ? WHERE id = ?').run(
+    status,
+    nowIso(now),
+    id,
+  );
+}
+
+/** Source-item ids backing a content item (direct link + cluster members). */
+export function sourceIdsForContent(db: StudioDatabase, contentItemId: string): string[] {
+  const rows = db
+    .prepare(
+      `SELECT si.id AS id FROM source_items si
+       WHERE si.id = (SELECT source_item_id FROM content_items WHERE id = ?)
+          OR si.id IN (SELECT source_item_id FROM story_sources
+                       WHERE cluster_id = (SELECT cluster_id FROM content_items WHERE id = ?))`,
+    )
+    .all(contentItemId, contentItemId) as Array<{ id: string }>;
+  return rows.map((r) => r.id).filter((id) => id !== null);
+}
+
+export interface ApprovalRow {
+  id: string;
+  variantId: string;
+  variantRevision: number;
+  channelId: string;
+  approvalHash: string;
+  approverUserId: string;
+  decision: string;
+}
+
+const mapApproval = (row: {
+  id: string;
+  variant_id: string;
+  variant_revision: number;
+  channel_id: string;
+  approval_hash: string;
+  approver_user_id: string;
+  decision: string;
+}): ApprovalRow => ({
+  id: row.id,
+  variantId: row.variant_id,
+  variantRevision: row.variant_revision,
+  channelId: row.channel_id,
+  approvalHash: row.approval_hash,
+  approverUserId: row.approver_user_id,
+  decision: row.decision,
+});
+
+export function saveApproval(
+  db: StudioDatabase,
+  input: {
+    variantId: string;
+    variantRevision: number;
+    channelId: string;
+    approvalHash: string;
+    approverUserId: string;
+    decision: string;
+    now?: number;
+  },
+): ApprovalRow {
+  const id = newId();
+  db.prepare(
+    `INSERT INTO approvals (id, variant_id, variant_revision, channel_id, approval_hash, approver_user_id, decision, decided_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    id,
+    input.variantId,
+    input.variantRevision,
+    input.channelId,
+    input.approvalHash,
+    input.approverUserId,
+    input.decision,
+    nowIso(input.now),
+  );
+  return {
+    id,
+    variantId: input.variantId,
+    variantRevision: input.variantRevision,
+    channelId: input.channelId,
+    approvalHash: input.approvalHash,
+    approverUserId: input.approverUserId,
+    decision: input.decision,
+  };
+}
+
+export function latestApprovalForVariant(
+  db: StudioDatabase,
+  variantId: string,
+): ApprovalRow | null {
+  const row = db
+    .prepare('SELECT * FROM approvals WHERE variant_id = ? ORDER BY rowid DESC LIMIT 1')
+    .get(variantId) as Parameters<typeof mapApproval>[0] | undefined;
+  return row ? mapApproval(row) : null;
+}
+
+/** True only when the latest stored hash still binds the given subject. */
+export function verifyVariantApproval(
+  db: StudioDatabase,
+  variantId: string,
+  subject: {
+    variantId: string;
+    variantRevision: number;
+    channelId: string;
+    text: string;
+    sourceIds: string[];
+    orderedAssetHashes: string[];
+    targetPublishAtUtc: string | null;
+    formatMetadata: Record<string, unknown>;
+    policyVersion: string;
+  },
+): boolean {
+  const latest = latestApprovalForVariant(db, variantId);
+  if (!latest) return false;
+  if (latest.variantId !== subject.variantId || latest.channelId !== subject.channelId) {
+    return false;
+  }
+  return verifyApproval(latest.approvalHash, subject);
 }

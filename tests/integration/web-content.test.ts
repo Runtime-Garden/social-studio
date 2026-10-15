@@ -14,6 +14,7 @@ import {
   createContentItem,
   createSource,
   createSourceItem,
+  createVariant,
   linkItemToCluster,
 } from '../../packages/storage/src/repos/content.js';
 import {
@@ -146,5 +147,127 @@ describe('content inbox API', () => {
     );
     expect(noCsrf.status).toBe(403);
     expect(((await noCsrf.json()) as ErrorBody).error.code).toBe('csrf_invalid');
+  });
+});
+
+describe('variant approval flow', () => {
+  async function seedVariant(server: StartedServer): Promise<string> {
+    const source = createSource(server.db, {
+      type: 'manual',
+      url: 'https://example.com/alpha',
+      label: 'Alpha',
+    });
+    const item = createSourceItem(server.db, {
+      sourceId: source.id,
+      guid: 'guid-alpha',
+      canonicalUrl: 'https://example.com/posts/alpha',
+      title: 'Alpha post',
+      summary: 'Alpha summary',
+    });
+    const cluster = createCluster(server.db, { title: 'Alpha cluster' });
+    linkItemToCluster(server.db, cluster.id, item.id, 'member');
+    const content = createContentItem(server.db, {
+      kind: 'manual',
+      title: 'Alpha story',
+      clusterId: cluster.id,
+      sourceItemId: item.id,
+    });
+    return createVariant(server.db, {
+      contentItemId: content.id,
+      platform: 'linkedin',
+      text: 'Hello network',
+    }).id;
+  }
+
+  it('approves a fixture variant and reports the snapshot as valid', async () => {
+    const server = await started();
+    const variantId = await seedVariant(server);
+    const login = await loginOk(server);
+    const headers = { cookie: login.cookie, 'x-csrf-token': login.csrfToken };
+
+    const approved = await postJson(
+      server,
+      `/api/v1/content/variants/${variantId}/approvals`,
+      { decision: 'approved', channelId: 'chan-1' },
+      headers,
+    );
+    expect(approved.status).toBe(201);
+
+    const latest = (await (
+      await getJson(server, `/api/v1/content/variants/${variantId}/approvals/latest`, {
+        cookie: login.cookie,
+      })
+    ).json()) as { approval: { decision: string }; valid: boolean };
+    expect(latest.approval.decision).toBe('approved');
+    expect(latest.valid).toBe(true);
+  });
+
+  it('revokes approval when the approved text is edited', async () => {
+    const server = await started();
+    const variantId = await seedVariant(server);
+    const login = await loginOk(server);
+    const headers = { cookie: login.cookie, 'x-csrf-token': login.csrfToken };
+
+    await postJson(
+      server,
+      `/api/v1/content/variants/${variantId}/approvals`,
+      { decision: 'approved', channelId: 'chan-1' },
+      headers,
+    );
+    const edited = await postJson(
+      server,
+      `/api/v1/content/variants/${variantId}/text`,
+      { text: 'Hello network, edited' },
+      headers,
+    );
+    expect(edited.status).toBe(200);
+    expect(((await edited.json()) as { variant: { status: string } }).variant.status).toBe(
+      'stale_approval',
+    );
+
+    const latest = (await (
+      await getJson(server, `/api/v1/content/variants/${variantId}/approvals/latest`, {
+        cookie: login.cookie,
+      })
+    ).json()) as { valid: boolean };
+    expect(latest.valid).toBe(false);
+  });
+
+  it('refuses submission while publishing stays disabled and creates no jobs', async () => {
+    const server = await started();
+    const variantId = await seedVariant(server);
+    const login = await loginOk(server);
+    const headers = { cookie: login.cookie, 'x-csrf-token': login.csrfToken };
+
+    const submitted = await postJson(
+      server,
+      `/api/v1/content/variants/${variantId}/submit`,
+      {},
+      headers,
+    );
+    expect(submitted.status).toBe(409);
+    expect(((await submitted.json()) as ErrorBody).error.code).toBe('publishing_disabled');
+    const jobs = server.db.prepare('SELECT COUNT(*) AS n FROM jobs').get() as { n: number };
+    expect(jobs.n).toBe(0);
+  });
+
+  it('records rejections with an audit event', async () => {
+    const server = await started();
+    const variantId = await seedVariant(server);
+    const login = await loginOk(server);
+    const headers = { cookie: login.cookie, 'x-csrf-token': login.csrfToken };
+
+    const rejected = await postJson(
+      server,
+      `/api/v1/content/variants/${variantId}/approvals`,
+      { decision: 'rejected', channelId: 'chan-1' },
+      headers,
+    );
+    expect(rejected.status).toBe(201);
+    expect(
+      listAuditEvents(server.db).some(
+        (e) => e.action === 'variant.rejected' && e.objectId === variantId,
+      ),
+    ).toBe(true);
   });
 });

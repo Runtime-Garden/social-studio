@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { openDatabase, type StudioDatabase } from '../../packages/storage/src/db.js';
 import { applyMigrations } from '../../packages/storage/src/migrate.js';
+import { approvalHash } from '../../packages/domain/src/approval.js';
+import { createUser } from '../../packages/storage/src/repos/users.js';
 import {
   addEvidenceClaim,
   createCluster,
@@ -19,10 +21,13 @@ import {
   createVariant,
   getContentItem,
   getVariant,
+  latestApprovalForVariant,
   linkItemToCluster,
   listContentItems,
+  saveApproval,
   transitionContentItem,
   updateVariantText,
+  verifyVariantApproval,
 } from '../../packages/storage/src/repos/content.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -118,5 +123,74 @@ describe('content inbox repositories', () => {
     expect(edited.revision).toBe(2);
     expect(edited.status).toBe('draft');
     expect(getVariant(db, variant.id)?.text).toBe('Hello again');
+  });
+});
+
+describe('variant approval binding', () => {
+  it('verifies a saved approval against the identical subject', () => {
+    const user = createUser(db, { username: 'owner', passwordHash: 'scrypt$demo' });
+    const content = createContentItem(db, { kind: 'manual', title: 'Story one' });
+    const variant = createVariant(db, {
+      contentItemId: content.id,
+      platform: 'linkedin',
+      text: 'Hello',
+    });
+    const subject = {
+      variantId: variant.id,
+      variantRevision: variant.revision,
+      channelId: 'chan-1',
+      text: 'Hello',
+      sourceIds: [],
+      orderedAssetHashes: [],
+      targetPublishAtUtc: null,
+      formatMetadata: {},
+      policyVersion: 'p2-slice-4',
+    };
+    const hash = approvalHash(subject);
+    saveApproval(db, {
+      variantId: variant.id,
+      variantRevision: variant.revision,
+      channelId: 'chan-1',
+      approvalHash: hash,
+      approverUserId: user.id,
+      decision: 'approved',
+    });
+    expect(latestApprovalForVariant(db, variant.id)?.decision).toBe('approved');
+    expect(verifyVariantApproval(db, variant.id, subject)).toBe(true);
+  });
+
+  it('fails verification after the approved text changes', () => {
+    const user = createUser(db, { username: 'owner', passwordHash: 'scrypt$demo' });
+    const content = createContentItem(db, { kind: 'manual', title: 'Story one' });
+    const variant = createVariant(db, {
+      contentItemId: content.id,
+      platform: 'linkedin',
+      text: 'Hello',
+    });
+    const subject = {
+      variantId: variant.id,
+      variantRevision: variant.revision,
+      channelId: 'chan-1',
+      text: 'Hello',
+      sourceIds: [],
+      orderedAssetHashes: [],
+      targetPublishAtUtc: null,
+      formatMetadata: {},
+      policyVersion: 'p2-slice-4',
+    };
+    saveApproval(db, {
+      variantId: variant.id,
+      variantRevision: variant.revision,
+      channelId: 'chan-1',
+      approvalHash: approvalHash(subject),
+      approverUserId: user.id,
+      decision: 'approved',
+    });
+    updateVariantText(db, variant.id, 'Hello again');
+    const edited = getVariant(db, variant.id)!;
+    expect(
+      verifyVariantApproval(db, variant.id, { ...subject, text: 'Hello again' }),
+    ).toBe(false);
+    expect(edited.revision).toBe(2);
   });
 });

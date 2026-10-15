@@ -11,9 +11,21 @@ import type { StudioDatabase } from '../../../../packages/storage/src/db.js';
 import { appendAuditEvent } from '../../../../packages/storage/src/repos/audit.js';
 import {
   getContentItem,
+  getVariant,
+  latestApprovalForVariant,
   listContentItems,
+  saveApproval,
+  setVariantStatus,
+  sourceIdsForContent,
   transitionContentItem,
+  updateVariantText,
+  verifyVariantApproval,
 } from '../../../../packages/storage/src/repos/content.js';
+import {
+  approvalHash,
+  type ApprovalSubject,
+} from '../../../../packages/domain/src/approval.js';
+import { getPolicy } from '../../../../packages/storage/src/repos/policy.js';
 import { getAuth, requireAuth, requireCsrf } from '../middleware/session.js';
 
 interface Page {
@@ -110,5 +122,178 @@ export function createContentRouter({ db }: { db: StudioDatabase }): Router {
     }
   });
 
+  router.post('/variants/:id/text', requireCsrf, (req, res) => {
+    const auth = getAuth(req)!;
+    const id = stringParam(req, 'id');
+    const before = getVariant(db, id);
+    if (!before) {
+      res.status(404).json({ error: { code: 'variant_not_found', message: 'No such variant' } });
+      return;
+    }
+    const text = isRecord(req.body) && typeof req.body.text === 'string' ? req.body.text : '';
+    if (text === '') {
+      res.status(400).json({
+        error: { code: 'invalid_request', message: 'text must be a non-empty string' },
+      });
+      return;
+    }
+    const edited = updateVariantText(db, id, text);
+    appendAuditEvent(db, {
+      actor: auth.user.username,
+      action: 'variant.edited',
+      objectType: 'platform_variant',
+      objectId: id,
+      revision: String(edited.revision),
+    });
+    // Edit-after-approval revokes: a previously-valid approved snapshot no
+    // longer binds the new revision.
+    const prior = latestApprovalForVariant(db, id);
+    let status = edited.status;
+    const preEditSubject =
+      prior && prior.decision === 'approved' && prior.variantRevision === before.revision
+        ? subjectFor(db, id, prior.channelId, before)
+        : null;
+    if (prior && preEditSubject && verifyVariantApproval(db, id, preEditSubject)) {
+      setVariantStatus(db, id, 'stale_approval');
+      status = 'stale_approval';
+      appendAuditEvent(db, {
+        actor: auth.user.username,
+        action: 'approval.revoked',
+        objectType: 'platform_variant',
+        objectId: id,
+        revision: String(edited.revision),
+        reason: 'variant text changed after approval',
+      });
+    }
+    res.status(200).json({ variant: { ...edited, status } });
+  });
+
+  router.post('/variants/:id/approvals', requireCsrf, (req, res) => {
+    const auth = getAuth(req)!;
+    const id = stringParam(req, 'id');
+    const variant = getVariant(db, id);
+    if (!variant) {
+      res.status(404).json({ error: { code: 'variant_not_found', message: 'No such variant' } });
+      return;
+    }
+    const body = isRecord(req.body) ? req.body : {};
+    const decision =
+      body.decision === 'approved' || body.decision === 'rejected' || body.decision === 'returned'
+        ? body.decision
+        : '';
+    const channelId = typeof body.channelId === 'string' && body.channelId !== '' ? body.channelId : '';
+    if (decision === '' || channelId === '') {
+      res.status(400).json({
+        error: {
+          code: 'invalid_request',
+          message: 'decision must be approved|rejected|returned and channelId non-empty',
+        },
+      });
+      return;
+    }
+    const subject = subjectFor(db, id, channelId);
+    if (!subject) {
+      res.status(404).json({ error: { code: 'variant_not_found', message: 'No such variant' } });
+      return;
+    }
+    const hash = approvalHash(subject);
+    const approval = saveApproval(db, {
+      variantId: id,
+      variantRevision: variant.revision,
+      channelId,
+      approvalHash: hash,
+      approverUserId: auth.user.id,
+      decision,
+    });
+    if (decision === 'approved') setVariantStatus(db, id, 'approved_snapshot');
+    appendAuditEvent(db, {
+      actor: auth.user.username,
+      action: `variant.${decision}`,
+      objectType: 'platform_variant',
+      objectId: id,
+      revision: String(variant.revision),
+    });
+    res.status(201).json({ approval: publicApproval(approval) });
+  });
+
+  router.get('/variants/:id/approvals/latest', (req, res) => {
+    const id = stringParam(req, 'id');
+    if (!getVariant(db, id)) {
+      res.status(404).json({ error: { code: 'variant_not_found', message: 'No such variant' } });
+      return;
+    }
+    const latest = latestApprovalForVariant(db, id);
+    if (!latest) {
+      res.status(404).json({ error: { code: 'no_approval', message: 'No approval recorded' } });
+      return;
+    }
+    const subject = subjectFor(db, id, latest.channelId);
+    const valid = subject ? verifyVariantApproval(db, id, subject) : false;
+    res.status(200).json({ approval: publicApproval(latest), valid });
+  });
+
+  router.post('/variants/:id/submit', requireCsrf, (req, res) => {
+    const id = stringParam(req, 'id');
+    if (!getVariant(db, id)) {
+      res.status(404).json({ error: { code: 'variant_not_found', message: 'No such variant' } });
+      return;
+    }
+    if (getPolicy(db).publishing_enabled !== true) {
+      res.status(409).json({
+        error: {
+          code: 'publishing_disabled',
+          message: 'Outbound publication is disabled by policy',
+        },
+      });
+      return;
+    }
+    res.status(501).json({
+      error: { code: 'not_implemented', message: 'Buffer submission arrives in P3' },
+    });
+  });
+
   return router;
+}
+
+/** Snapshot policy version pinned for slice-4 fixture approvals. */
+const APPROVAL_POLICY_VERSION = 'p2-slice-4';
+
+function publicApproval(approval: {
+  id: string;
+  variantRevision: number;
+  channelId: string;
+  decision: string;
+}): Record<string, unknown> {
+  return {
+    id: approval.id,
+    variantRevision: approval.variantRevision,
+    channelId: approval.channelId,
+    decision: approval.decision,
+  };
+}
+
+/**
+ * Reconstructs the approval subject from current DB state so `latest`
+ * validity reflects live reality: same derivation as approval time means
+ * any text/revision drift fails verification.
+ */
+function subjectFor(
+  db: StudioDatabase,
+  variantId: string,
+  channelId: string,
+  override?: { text: string; revision: number; scheduledAt: string | null; contentItemId: string },
+): ApprovalSubject | null {
+  const variant = override ?? getVariant(db, variantId);
+  if (!variant) return null;
+  return {
+    variantId,
+    variantRevision: variant.revision,
+    channelId,
+    text: variant.text,
+    sourceIds: sourceIdsForContent(db, variant.contentItemId),
+    orderedAssetHashes: [],
+    targetPublishAtUtc: variant.scheduledAt,
+    formatMetadata: {},
+    policyVersion: APPROVAL_POLICY_VERSION,
+  };
 }
