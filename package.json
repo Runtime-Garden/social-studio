@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:browser": "playwright test",
     "typecheck": "tsc --noEmit",
-    "build:core": "esbuild packages/studio-core/src/registry.ts --bundle --format=iife --global-name=RGStudioCore --outfile=packages/studio-core/dist/studio-core.js",
+    "build:core": "esbuild packages/studio-core/src/index.ts --bundle --format=iife --global-name=RGStudioCore --outfile=packages/studio-core/dist/studio-core.js",
     "build:standalone": "node tools/build-standalone.cjs",
     "update:goldens": "node tools/update-goldens.cjs",
     "refresh:examples": "node tools/refresh-examples.cjs",
