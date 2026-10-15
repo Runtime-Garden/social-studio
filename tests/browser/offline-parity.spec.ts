@@ -207,3 +207,108 @@ test('multi-size bundle export contains one folder per selected size', async ({ 
   expect(names).toContain('square/');
   expect(names).toContain('README.txt');
 });
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/** Decodes width/height straight out of the PNG IHDR chunk. */
+function pngDimensions(bytes: Buffer): { width: number; height: number } {
+  expect(bytes.subarray(0, 8)).toEqual(PNG_SIGNATURE);
+  expect(bytes.subarray(12, 16).toString('latin1')).toBe('IHDR');
+  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+}
+
+test('undo and redo restore the headline through keyboard shortcuts and buttons', async ({
+  page,
+}) => {
+  await openEditor(page);
+  const original = (await page.evaluate(() => app.slides[0]!.title)) as string;
+  const edited = 'Undo/redo verification headline';
+
+  // Edit through the real content inspector; blurring commits one history entry.
+  await page.locator('#fld-title').fill(edited);
+  await page.locator('#workTitle').click();
+  await expect.poll(() => page.evaluate(() => app.slides[0]!.title)).toBe(edited);
+  await expect(page.locator('#undoBtn')).toBeEnabled();
+
+  // Ctrl+Z on a non-editable target runs the keyboard shortcut path.
+  await page.locator('body').press('Control+z');
+  await expect.poll(() => page.evaluate(() => app.slides[0]!.title)).toBe(original);
+
+  // Redo via the toolbar button, undo via the toolbar button again.
+  await page.locator('#redoBtn').click();
+  await expect.poll(() => page.evaluate(() => app.slides[0]!.title)).toBe(edited);
+  await page.locator('#undoBtn').click();
+  await expect.poll(() => page.evaluate(() => app.slides[0]!.title)).toBe(original);
+
+  // Ctrl+Y redo path.
+  await page.locator('body').press('Control+y');
+  await expect.poll(() => page.evaluate(() => app.slides[0]!.title)).toBe(edited);
+});
+
+test('maximum-length text renders without errors, warns in preflight and exports', async ({
+  page,
+}) => {
+  await openEditor(page);
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(String(error)));
+
+  const longTitle = 'Scaling engineering systems under maximum load: '.repeat(6).slice(0, 260);
+  const longSubtitle =
+    'A documented walkthrough of queue backpressure, retry budgets and observability. '.repeat(9).slice(0, 600);
+
+  await page.locator('#fld-title').fill(longTitle);
+  await page.locator('#fld-subtitle').fill(longSubtitle);
+  await page.locator('#workTitle').click();
+
+  await expect
+    .poll(() => page.evaluate(() => String(app.slides[0]!.title).length))
+    .toBe(260);
+  await expect
+    .poll(() => page.evaluate(() => String(app.slides[0]!.subtitle).length))
+    .toBe(600);
+
+  // The publish preflight flags the over-length headline for manual review.
+  await page.click('button[data-inspect="publish"]');
+  await expect(page.locator('#publishInspector .preflight')).toContainText(
+    'Very long headline',
+  );
+
+  // The canvas still renders and exports at the exact portrait dimensions.
+  const download = page.waitForEvent('download');
+  await page.locator('#quickExportBtn').click();
+  const bytes = readFileSync((await (await download).path())!);
+  expect(pngDimensions(bytes)).toEqual({ width: 1080, height: 1350 });
+  expect(bytes.length).toBeGreaterThan(10_000);
+  expect(pageErrors).toEqual([]);
+});
+
+test('custom canvas dimensions export a PNG at exactly those pixel dimensions', async ({
+  page,
+}) => {
+  await openEditor(page);
+
+  // Custom size controls live in the Style inspector.
+  await page.click('button[data-inspect="style"]');
+  await page.selectOption('#fld-format', 'custom');
+  await expect(page.locator('#customDims')).toBeVisible();
+  await page.locator('#fld-customWidth').fill('1200');
+  await page.locator('#fld-customHeight').fill('630');
+  await page.locator('#workTitle').click();
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        format: app.slides[0]!.format,
+        width: app.slides[0]!.customWidth,
+        height: app.slides[0]!.customHeight,
+      })),
+    )
+    .toEqual({ format: 'custom', width: 1200, height: 630 });
+
+  const download = page.waitForEvent('download');
+  await page.locator('#quickExportBtn').click();
+  const file = await download;
+  const bytes = readFileSync((await file.path())!);
+  expect(pngDimensions(bytes)).toEqual({ width: 1200, height: 630 });
+  expect(file.suggestedFilename()).toMatch(/-01-cover\.png$/);
+});
