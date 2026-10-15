@@ -62,6 +62,11 @@ export function appendAuditEvent(
   return row;
 }
 
+export function countAuditEvents(db: StudioDatabase): number {
+  const row = db.prepare('SELECT COUNT(*) AS n FROM audit_events').get() as { n: number };
+  return row.n;
+}
+
 export function listAuditEvents(
   db: StudioDatabase,
   { limit = 50, offset = 0 }: { limit?: number; offset?: number } = {},
