@@ -81,5 +81,31 @@ live-verified** — nothing is "production-ready" without executed evidence.
   extraction changed no rendered output.
 
 **Still to do (P1):** Canvas `frame` extraction; explicit v1/v2 schema modules
-and migrations; content-brief-to-studio builder; golden-image tolerance
-snapshots; undo/redo, large-text and custom-dimension browser coverage.
+and migrations; golden-image tolerance snapshots; undo/redo, large-text and
+custom-dimension browser coverage.
+
+### P1 — Content-brief-to-studio builder (commit `f9b8a07`)
+
+**Added:**
+
+- `packages/studio-core/src/project-builder.ts`,
+  `validateContentBrief()` — strict ContentBrief v1 validation with coded
+  errors (no silent repair): field limits, required claim evidence,
+  http(s)-only URLs, confidence labels `verified`/`uncertain`/`unsupported`.
+- `buildStudioProject()` — validated brief → editable v2 `.rgstudio.json`.
+  Single card or coordinated series pack (mirrors the editor's
+  `applySeriesPack()` styling); only brief-truthful text overlaid; bullets
+  copied verbatim from **verified** claims only, onto plain line-list layouts;
+  normalized brief embedded for provenance.
+
+**Tested (evidence in this repository):**
+
+- 19 unit tests written test-first (RED watched) + mutation check: sabotaging
+  the verified-claims filter failed exactly the bullets test, then reverted.
+- 2 VM integration tests: builder output restored through the real
+  `restoreFrom()` (single card and pack; whitelist drops the provenance
+  envelope from editor state).
+- 1 real-browser test: both builder modes imported through the actual file
+  input; app state matches the project.
+- Full `npm run verify` green: 47 unit assertions, 11/11 Playwright,
+  standalone artifact byte-identical.

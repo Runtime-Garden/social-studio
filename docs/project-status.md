@@ -48,10 +48,31 @@ standalone builder and all VM test loaders consume the bundle.
 series smoke 12 packs / 0 failures; 26 unit assertions pass; 10/10 real-browser
 tests pass; standalone rebuilt; P0 evidence screenshots remain byte-identical.
 
-Remaining P1 checklist: Canvas `frame` extraction; explicit schema modules +
-v1→v2 migration functions; content-brief-to-studio project builder;
-golden-image tolerance snapshots; browser coverage for undo/redo, large text
-and custom-dimension exports.
+Slice 2 (commit `f9b8a07`): **content-brief-to-studio builder** in
+`packages/studio-core/src/project-builder.ts`.
+
+- `validateContentBrief()` — strict ContentBrief v1 validation (coded errors,
+  no repair of invalid input): kinds, limits, claims with required evidence,
+  http(s)-only URLs, confidence ∈ {verified, uncertain, unsupported}.
+- `buildStudioProject()` — validated brief → editable v2 `.rgstudio.json`.
+  Single card (`options.templateId` > `suggestedStudioTemplate` >
+  `announcement`) or a coordinated series pack mirroring the editor's
+  `applySeriesPack()` (theme/pattern/series/variant/chapter).
+- Only brief-truthful text is overlaid (title/subtitle/tag/source/date);
+  bullets are copied verbatim from `verified` claims only, and only onto plain
+  line-list layouts. The normalized brief is embedded for provenance.
+
+**Evidence (executed):** 19 unit tests written RED→GREEN plus a mutation check
+(sabotaging the verified-claims filter failed exactly the bullets test, then
+reverted); 2 VM integration tests restore builder output through the real
+`restoreFrom()`; 1 real-browser test imports both modes through the file
+input; full `npm run verify` green (47 unit assertions, 11/11 Playwright,
+standalone artifact byte-identical).
+
+Remaining P1 checklist: golden-image tolerance snapshots (next, per blueprint
+8.1 step 1 — before touching renderer code); Canvas `frame` extraction;
+explicit schema modules + v1→v2 migration functions; browser coverage for
+undo/redo, large text and custom-dimension exports.
 
 ## v3 online workspace (blueprint phases P2–P6)
 
