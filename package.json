@@ -10,6 +10,7 @@
   "scripts": {
     "check": "node --check studio.js",
     "smoke": "node tests/render-smoke.cjs && node tests/series-smoke.cjs",
+    "seed": "node tools/seed-fixtures.cjs",
     "test": "vitest run",
     "test:browser": "playwright test",
     "typecheck": "tsc --noEmit",

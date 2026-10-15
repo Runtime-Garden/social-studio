@@ -1,0 +1,26 @@
+# Runtime Garden Social Studio — local dev stack
+#
+# Usage:
+#   cp .env.example .env   # then edit the two required values below
+#   docker compose up
+#   node tools/seed-fixtures.cjs   # optional demo fixtures (idempotent)
+#
+# No secrets belong in this file. All secrets stay in .env (gitignored).
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      RG_HOST: 0.0.0.0
+    ports:
+      - "${RG_PORT:-8787}:8787"
+    volumes:
+      - studio-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  studio-data:
