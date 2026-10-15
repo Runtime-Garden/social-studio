@@ -326,3 +326,50 @@ has zero online dependencies. Full `npm run verify`: smoke `[40, 16, 14336]`,
 - Full `npm run verify` green: smoke `[40, 16, 14336]`; **136 assertions**
   (16 files); typecheck OK; 32/32 Playwright (28 offline + 4 online);
   standalone sha256 `d7501b4d…` byte-identical (offline v2 untouched).
+
+### P2 — Content inbox, approvals, policy gate and ops viewers (commits `fbfcde8`, `7b500bf`, `8fd7962`, `696dc10`, `6794c22`)
+
+**Added:**
+
+- Content repositories (`packages/storage/src/repos/content.ts`): sources,
+  source items, story clusters, content items, evidence claims and
+  platform variants over the migration-0001 tables, with citation joins
+  (`getContentItem` returns sources + claims) and editorial transitions
+  validated through the domain state machine (`canTransitionContent`).
+- Inbox API (`/api/v1/content/items`): paginated list, single-item fetch
+  with citation URLs, guarded transitions with `content.transition` audit
+  events (invalid targets are 400 `invalid_content_transition`, no bypass).
+- Variant approval flow with snapshot binding: approvals hash the exact
+  subject via the domain `approvalHash` (variant revision, channel, text,
+  source ids, asset hashes, schedule, policy version); `latest` validity is
+  re-derived from live DB state, so editing variant text after approval
+  flips the variant to `stale_approval` with an `approval.revoked` audit
+  event. Submission stays gated: `POST …/submit` returns 409
+  `publishing_disabled` while `publishing_enabled=false` and creates no
+  jobs — zero outbound publication.
+- Ops API (`/api/v1/ops`): safe-default policy read, type-validated policy
+  writes with `policy.updated` audit, idempotent pause (`publishing.paused`
+  audit), a resume endpoint that provably refuses (409
+  `publishing_disabled_by_default`), newest-first audit viewer and jobs
+  viewer with an honest empty state.
+- Content UI (`/content/`, gated + canonicalized like `/studio/` with a
+  `?next=` return after sign-in): read-only inbox, story view with
+  clickable citation links, variant text editor, approve/reject with live
+  snapshot state, and the pause control. Strict CSP kept throughout.
+
+**Tested (evidence in this repository):**
+
+- 22 new assertions RED→GREEN (6 storage, 9 content-API incl. variants
+  listing, 7 ops) plus a 5-journey Playwright spec
+  (`tests/browser/content-approvals.spec.ts`): gating/canonicalization,
+  inbox with real citation hrefs, approval with every non-local request
+  aborted, edit-after-approval revocation, pause control.
+- Mutation checks with clean per-test attribution (all reverted
+  byte-identical): transition-guard bypass, pause-enables, submit-gate
+  removal, and approve/verify hash-derivation drift each failed exactly
+  their aimed tests (one initially-ineffective sabotage was redesigned —
+  a uniform hash-scheme change is self-consistent — into a drift sabotage
+  that failed exactly the 2 approval-validity tests).
+- Full `npm run verify` green: smoke `[40, 16, 14336]`; **158 assertions**
+  (19 files); typecheck OK; 37/37 Playwright (32 prior + 5 new);
+  standalone sha256 `d7501b4d…` byte-identical (offline v2 untouched).

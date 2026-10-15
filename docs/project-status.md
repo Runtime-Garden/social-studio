@@ -6,7 +6,7 @@ Nothing below may be inferred from code merely existing — every "tested" claim
 links to executed evidence.
 
 **Last updated:** 2026-10-15 (P0 complete; **P1 complete** — slices 1–6; P2
-in progress — slices 1–3 committed).
+in progress — slices 1–4 committed).
 
 ## v2 offline editor (preserved baseline)
 
@@ -170,8 +170,8 @@ standalone sha256 `d7501b4d…` byte-identical.
 |---|---|
 | Planned | yes — `.opencode/RUNTIME_GARDEN_SOCIAL_STUDIO_V3_OPENCODE_IMPLEMENTATION_BLUEPRINT.md` |
 | Designed | yes — blueprint sections 4–14 |
-| Coded | in progress — P2 slice 1 (domain state machines, approval proof, SQLite storage + repos) committed `776f941`; P2 slice 2 (authenticated web skeleton) committed `f2acea3`; P2 slice 3 (projects/revisions API + online studio editor pages) committed `3f89959` |
-| Tested | partial — 136 vitest assertions total (unit + real-HTTP integration) plus 32 real-browser tests; projects API, online editor journeys, conflict handling and export pinned |
+| Coded | in progress — P2 slices 1–4 committed (domain/storage `776f941`, web skeleton `f2acea3`, projects API + online editor `3f89959`, content/approvals/ops `fbfcde8`…`6794c22`) |
+| Tested | partial — 158 vitest assertions total (unit + real-HTTP integration) plus 37 real-browser tests; projects API, online editor, inbox, approvals, policy gate and pause pinned |
 | Deployed | no |
 | Live-verified | no |
 
