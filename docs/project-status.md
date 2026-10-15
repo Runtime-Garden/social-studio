@@ -5,7 +5,7 @@ separated: planned / designed / coded / tested / deployed / live-verified.
 Nothing below may be inferred from code merely existing — every "tested" claim
 links to executed evidence.
 
-**Last updated:** 2026-10-15 (P0 audit complete; P1 starting).
+**Last updated:** 2026-10-15 (P0 complete; P1 slice 1 committed — registry extracted output-neutral).
 
 ## v2 offline editor (preserved baseline)
 
@@ -34,13 +34,32 @@ distinctness and geometry, not visual baselines), accessibility audit.
   with fresh random uids on every run. Now tests are read-only; regeneration
   happens only through `npm run refresh:examples`.
 
+## P1 — Shared Studio core (in progress)
+
+Slice 1 (commit `a26cef4`, branch `v3`): the pure registry
+(`FORMATS`, `getFormat`, `SAMPLES`, `SERIES_PACKS`, `DEFAULTS`,
+`SERIES_CONTENT`, `clamp`, `uid`, `NEW_SLIDE`) was extracted **verbatim** from
+`studio.js` into `packages/studio-core/src/registry.ts`, bundled by esbuild as
+`packages/studio-core/dist/studio-core.js` (IIFE global `RGStudioCore`,
+committed; CI diffs it for determinism). `studio.js`, `index.html`, the
+standalone builder and all VM test loaders consume the bundle.
+
+**Output-neutrality evidence (executed):** render smoke `[40, 16, 14336]`;
+series smoke 12 packs / 0 failures; 26 unit assertions pass; 10/10 real-browser
+tests pass; standalone rebuilt; P0 evidence screenshots remain byte-identical.
+
+Remaining P1 checklist: Canvas `frame` extraction; explicit schema modules +
+v1→v2 migration functions; content-brief-to-studio project builder;
+golden-image tolerance snapshots; browser coverage for undo/redo, large text
+and custom-dimension exports.
+
 ## v3 online workspace (blueprint phases P2–P6)
 
 | State | Value |
 |---|---|
 | Planned | yes — `.opencode/RUNTIME_GARDEN_SOCIAL_STUDIO_V3_OPENCODE_IMPLEMENTATION_BLUEPRINT.md` |
 | Designed | yes — blueprint sections 4–14 |
-| Coded | no (skeleton only: TS toolchain, `packages/shared`, CI) |
+| Coded | no (skeleton only: TS toolchain, `packages/studio-core` registry extraction, CI) |
 | Tested | no |
 | Deployed | no |
 | Live-verified | no |
@@ -69,11 +88,12 @@ distinctness and geometry, not visual baselines), accessibility audit.
 
 ```sh
 npm ci
+npm run build:core   # esbuild packages/studio-core → dist/studio-core.js
 npm run check        # node --check studio.js
 npm run smoke        # mock-Canvas + series/pack + example-file verification
 npm run typecheck    # tsc --noEmit
-npm run test         # vitest: 19 unit assertions
+npm run test         # vitest: 26 unit assertions
 npm run build:standalone
-npm run test:browser # Playwright chromium, 5 tests
+npm run test:browser # Playwright chromium, 10 tests
 node tools/capture-evidence.cjs  # regenerate docs/evidence/p0 screenshots
 ```

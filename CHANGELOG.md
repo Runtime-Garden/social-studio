@@ -58,3 +58,28 @@ live-verified** — nothing is "production-ready" without executed evidence.
 - CI workflow not yet executed on GitHub (push requires owner approval).
 - No online workspace code yet (P2+); Buffer/LLM integrations blocked on
   owner-provided accounts/keys.
+
+### P1 — Shared Studio core (slice 1, commit `a26cef4`)
+
+**Refactored (output-neutral, evidence below):**
+
+- Extracted the pure registry — `FORMATS`, `getFormat`, `SAMPLES`,
+  `SERIES_PACKS`, `DEFAULTS`, `SERIES_CONTENT`, `clamp`, `uid`, `NEW_SLIDE` —
+  verbatim from `studio.js` into `packages/studio-core/src/registry.ts`.
+- Added `npm run build:core` (esbuild, IIFE global `RGStudioCore`) producing
+  the committed, deterministic bundle `packages/studio-core/dist/studio-core.js`.
+- `studio.js`, `index.html`, `tools/build-standalone.cjs` and the
+  smoke/unit/refresh VM loaders now consume the bundle; CI additionally diffs
+  it to prove the committed bundle is current.
+
+**Tested (evidence in this repository):**
+
+- Render smoke `[40, 16, 14336]`; series smoke 12 packs, 0 failures.
+- 26 unit assertions; 10/10 Playwright browser tests; standalone rebuilt and
+  still renders with all network requests blocked.
+- P0 evidence screenshots (`docs/evidence/p0/`) byte-identical after rebuild —
+  extraction changed no rendered output.
+
+**Still to do (P1):** Canvas `frame` extraction; explicit v1/v2 schema modules
+and migrations; content-brief-to-studio builder; golden-image tolerance
+snapshots; undo/redo, large-text and custom-dimension browser coverage.
