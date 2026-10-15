@@ -16,15 +16,14 @@ links to executed evidence.
 | Coded | yes — immutable baseline commit `d2f202c` |
 | Tested (mock Canvas) | yes — `tests/render-smoke.cjs` (40 layouts × 16 formats × 2 themes; 14,336 text draw calls), `tests/series-smoke.cjs` (12 packs, committed examples verified) |
 | Tested (unit) | yes — `tests/unit/project-roundtrip.test.ts` (19 assertions incl. v1 import, malformed input, clamping) |
-| Tested (real browser) | yes — `tests/browser/*.spec.ts` on Chromium headless shell 156 (5 tests: 80-frame render sweep, UI interactions, PNG/JSON/ZIP downloads, v1 import + reload persistence, network-blocked standalone) |
+| Tested (real browser) | yes — `tests/browser/*.spec.ts` on Chromium headless shell 156 (10 tests: 80-frame render sweep; live UI interactions; PNG/JSON/ZIP/JPEG/WebP/multi-size-bundle downloads validated by file signatures; **all 12 series packs applied through the UI with README frame counts**; **all 16 size presets rendered at exact README dimensions**; **image upload + crop-position change**; v1 import + reload persistence; network-blocked standalone) |
 | Visual evidence | `docs/evidence/p0/*.png` (real screenshots; standalone file:// render byte-identical to served render) |
 | Deployed | not deployed (by design; static folder/standalone only) |
 | Live-verified | n/a (no external service) |
 
 **Not yet verified (tracked for P1):** Firefox/Safari/WebKit, mobile viewports,
-pixel-tolerance golden-image regression, image upload + crop in real browser,
-multi-size bundle export in real browser, accessibility audit, print/contrast
-sweep.
+pixel-tolerance golden-image regression (current browser checks assert
+distinctness and geometry, not visual baselines), accessibility audit.
 
 ## v2 documentation gaps fixed in P0
 
@@ -61,8 +60,10 @@ sweep.
 - WSL2 Linux (Playwright reports ubuntu24.04 fallback build of Chromium), Node
   v24.21.0, npm 11.19.0.
 - Playwright Chromium headless shell `156.0.8078.4` (playwright build v1248).
-- First-run note: initial Playwright invocations on this machine took ~2
-  minutes wall time (cold filesystem scan); steady-state full suite ≈ 9 s.
+- Note: Playwright **startup/teardown on this WSL mount is intermittently slow**
+  (2–4 min wall for a run whose test bodies total ≈7 s); a reproducible
+  environment artifact observed with and without debug tracing, not a test
+  design cost. Test bodies are fast; CI runs on Linux runners without it.
 
 ## Evidence commands (P0)
 

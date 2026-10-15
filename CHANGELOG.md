@@ -19,11 +19,17 @@ live-verified** — nothing is "production-ready" without executed evidence.
 - 19 unit assertions (`tests/unit/project-roundtrip.test.ts`): v1 import,
   v2 example round-trips, clamping, hostile inputs (unknown layout, >100
   slides, oversized/invalid images, string caps, key injection).
-- 5 real-browser tests (`tests/browser/*.spec.ts`) on Chromium headless
+- 10 real-browser tests (`tests/browser/*.spec.ts`) on Chromium headless
   shell 156: full 40-layout × light/dark render sweep with pixel hashing;
-  live UI interactions; PNG/JSON/ZIP export downloads validated by file
-  signatures; v1 import + localStorage persistence across reload; standalone
-  artifact renders with **all network requests aborted**.
+  live UI interactions; PNG/JSON/ZIP/JPEG/WebP/multi-size-bundle downloads
+  validated by file signatures; all 12 series packs applied through the UI
+  verified against README frame counts; all 16 size presets rendered at
+  exact README dimensions; image upload + crop-position pixel change; v1
+  import + localStorage persistence across reload; standalone artifact
+  renders with **all network requests aborted**.
+- Deliberate mutation check executed: a sabotaged size expectation was
+  caught by the formats test (then reverted), proving the suite detects
+  dimension regressions.
 - Committed screenshots: `docs/evidence/p0/` (served vs standalone default
   render byte-identical).
 
