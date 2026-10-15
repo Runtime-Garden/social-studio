@@ -360,10 +360,11 @@ has zero online dependencies. Full `npm run verify`: smoke `[40, 16, 14336]`,
 **Tested (evidence in this repository):**
 
 - 22 new assertions RED→GREEN (6 storage, 9 content-API incl. variants
-  listing, 7 ops) plus a 5-journey Playwright spec
+  listing, 7 ops) plus a 7-journey Playwright spec
   (`tests/browser/content-approvals.spec.ts`): gating/canonicalization,
   inbox with real citation hrefs, approval with every non-local request
-  aborted, edit-after-approval revocation, pause control.
+  aborted, edit-after-approval revocation, rejected-reload display,
+  approve-binds-visible-text, pause control.
 - Mutation checks with clean per-test attribution (all reverted
   byte-identical): transition-guard bypass, pause-enables, submit-gate
   removal, and approve/verify hash-derivation drift each failed exactly
@@ -371,5 +372,9 @@ has zero online dependencies. Full `npm run verify`: smoke `[40, 16, 14336]`,
   a uniform hash-scheme change is self-consistent — into a drift sabotage
   that failed exactly the 2 approval-validity tests).
 - Full `npm run verify` green: smoke `[40, 16, 14336]`; **158 assertions**
-  (19 files); typecheck OK; 37/37 Playwright (32 prior + 5 new);
+  (19 files); typecheck OK; 39/39 Playwright (32 prior + 7 new);
   standalone sha256 `d7501b4d…` byte-identical (offline v2 untouched).
+- Fresh whole-range review (subagent) returned *With fixes*: two approval-
+  state display bugs fixed RED→GREEN in commit `cb91c89` (rejected story
+  re-rendered as "Approved snapshot" on reload; Approve ignored unsaved
+  textarea text) with six minors deferred to the ledger.
