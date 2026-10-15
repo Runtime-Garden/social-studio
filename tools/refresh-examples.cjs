@@ -15,8 +15,10 @@ const path = require('node:path');
 
 const file = path.join(__dirname, '..', 'studio.js');
 let src = fs.readFileSync(file, 'utf8').replace(/start\(\)\.catch\(e=>\{console\.error\(e\);toast\('Studio initialization failed: '\+e\.message\)\}\);\s*$/, '');
+const coreSrc = fs.readFileSync(path.join(__dirname, '..', 'packages', 'studio-core', 'dist', 'studio-core.js'), 'utf8');
 const sand = { structuredClone, console, confirm: () => true };
 vm.createContext(sand);
+vm.runInContext(coreSrc, sand);
 vm.runInContext(src, sand);
 
 const docs = JSON.parse(

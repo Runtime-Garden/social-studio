@@ -48,11 +48,14 @@ const styleTag = '<link rel="stylesheet" href="studio.css" />';
 if (!html.includes(styleTag)) throw new Error('index.html no longer references studio.css as expected');
 html = html.replace(styleTag, `<style>\n${css}\n</style>`);
 
-// 2. Inline the scripts.
+// 2. Inline the scripts (core registry first, then brand, then studio).
+const coreTag = '<script src="packages/studio-core/dist/studio-core.js"></script>';
 const brandTag = '<script src="assets/brand-embedded.js"></script>';
 const studioTag = '<script src="studio.js"></script>';
+if (!html.includes(coreTag)) throw new Error('index.html no longer references packages/studio-core/dist/studio-core.js as expected');
 if (!html.includes(brandTag)) throw new Error('index.html no longer references assets/brand-embedded.js as expected');
 if (!html.includes(studioTag)) throw new Error('index.html no longer references studio.js as expected');
+html = html.replace(coreTag, inlineScript(read('packages/studio-core/dist/studio-core.js')));
 html = html.replace(brandTag, inlineScript(brand));
 html = html.replace(studioTag, inlineScript(studio));
 

@@ -20,7 +20,12 @@ function loadStudio(): vm.Context {
     /start\(\)\.catch\(e=>\{console\.error\(e\);toast\('Studio initialization failed: '\+e\.message\)\}\);\s*$/,
     '',
   );
+  const core = readFileSync(
+    path.join(repoRoot, 'packages', 'studio-core', 'dist', 'studio-core.js'),
+    'utf8',
+  );
   const sand = vm.createContext({ structuredClone, console });
+  vm.runInContext(core, sand);
   vm.runInContext(src, sand);
   return sand;
 }

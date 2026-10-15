@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build studio-core registry bundle
+        run: npm run build:core
+
       - name: Syntax check (v2 editor)
         run: npm run check
 
@@ -39,8 +42,8 @@ jobs:
       - name: Build standalone offline artifact
         run: npm run build:standalone
 
-      - name: Verify committed standalone artifact is current and deterministic
-        run: git diff --exit-code -- Runtime_Garden_Social_Studio_v2_Standalone.html
+      - name: Verify committed generated artifacts are current and deterministic
+        run: git diff --exit-code -- Runtime_Garden_Social_Studio_v2_Standalone.html packages/studio-core/dist
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium

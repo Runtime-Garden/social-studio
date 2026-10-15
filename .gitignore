@@ -6,6 +6,8 @@ node_modules/
 
 # Test and build outputs
 dist/
+!packages/studio-core/dist/
+!packages/studio-core/dist/**
 test-results/
 playwright-report/
 blob-report/

@@ -13,14 +13,16 @@
     "test": "vitest run",
     "test:browser": "playwright test",
     "typecheck": "tsc --noEmit",
+    "build:core": "esbuild packages/studio-core/src/registry.ts --bundle --format=iife --global-name=RGStudioCore --outfile=packages/studio-core/dist/studio-core.js",
     "build:standalone": "node tools/build-standalone.cjs",
     "refresh:examples": "node tools/refresh-examples.cjs",
     "serve": "node tools/serve.cjs",
-    "verify": "npm run check && npm run smoke && npm run typecheck && npm run test && npm run build:standalone && npm run test:browser"
+    "verify": "npm run build:core && npm run check && npm run smoke && npm run typecheck && npm run test && npm run build:standalone && npm run test:browser"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5",
+    "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.4"
   }
