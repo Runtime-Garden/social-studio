@@ -1,5 +1,5 @@
 const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('node:assert/strict');
-const file=path.join(__dirname,'../studio.js');let src=fs.readFileSync(file,'utf8').replace(/start\(\)\.catch\(e=>\{console\.error\(e\);toast\('Studio initialization failed: '\+e.message\)\}\);\s*$/,'');
+const file=path.join(__dirname,'../studio.js');let src=fs.readFileSync(file,'utf8').replace(/start\(\)\.catch\(e=>\{console\.error\(e\);toast\('Studio initialization failed: '\+e\.message\)\}\);\s*$/,'');
 const sand={structuredClone,console,confirm:()=>true};vm.createContext(sand);vm.runInContext(src,sand);
 const script=`
 mutate=fn=>fn();switchLeft=()=>{};toast=()=>{};
@@ -15,11 +15,19 @@ app={name:'custom-test',seriesPack:'none',slides:[NEW_SLIDE('cover')],selected:0
 const fmt=getFormat(app.slides[0]);if(fmt.w!==2460||fmt.h!==1640)failures.push('custom dimensions');
 const roundtrip=restoreFrom(JSON.stringify(app));if(roundtrip.slides[0].customWidth!==2460)failures.push('custom roundtrip');
 JSON.stringify({passes:SERIES_PACKS.length,packs:SERIES_PACKS.map(x=>x.name),layouts:SAMPLES.length,formats:FORMATS.length,failures});`;
-const r=JSON.parse(vm.runInContext(script,sand));assert.deepEqual(r.failures,[]);console.log('Series smoke:',r);
-// Write example editable projects generated from the real JS templates / pack definitions.
-vm.runInContext(`
-const fsOutput=[];
-for(const pack of SERIES_PACKS){app={name:'Runtime Garden · '+pack.name,seriesPack:'none',slides:[NEW_SLIDE('cover')],selected:0};applySeriesPack(pack.id);fsOutput.push({id:pack.id,payload:JSON.stringify({format:'runtime-garden-social-studio',version:2,...app},null,2)})};
-`,sand);
-let docs=vm.runInContext('fsOutput',sand);
-for(const d of docs){fs.writeFileSync(path.join(__dirname,'../examples/series-'+d.id+'.rgstudio.json'),d.payload)}
+const r=JSON.parse(vm.runInContext(script,sand));assert.deepEqual(r.failures,[]);
+// Verify the committed example projects still load and match their pack definitions.
+// This test no longer rewrites tracked files; use `npm run refresh:examples` for that.
+const packs=JSON.parse(vm.runInContext('JSON.stringify(SERIES_PACKS)',sand));
+const exampleFailures=[];
+for(const pack of packs){
+  const p=path.join(__dirname,'../examples/series-'+pack.id+'.rgstudio.json');
+  if(!fs.existsSync(p)){exampleFailures.push(pack.id+': missing example file');continue}
+  const restored=vm.runInContext('restoreFrom('+JSON.stringify(fs.readFileSync(p,'utf8'))+')',sand);
+  if(restored.slides.length!==pack.slides.length)exampleFailures.push(pack.id+': example slide count');
+  if(restored.slides.some((s,i)=>s.id!==pack.slides[i]))exampleFailures.push(pack.id+': example layout order');
+  if(restored.slides.some(s=>s.series!==pack.id))exampleFailures.push(pack.id+': example series id');
+  if(restored.slides.some(s=>s.theme!==pack.theme))exampleFailures.push(pack.id+': example theme');
+}
+assert.deepEqual(exampleFailures,[]);
+console.log('Series smoke:',{...r,examplesChecked:packs.length});
