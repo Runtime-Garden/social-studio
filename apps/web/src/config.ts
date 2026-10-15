@@ -26,6 +26,13 @@ export interface WebConfig {
   adminBootstrap?: { username: string; password: string };
   /** Directory containing NNNN_name.sql migrations. */
   migrationsDir: string;
+  /**
+   * Number of reverse-proxy hops to trust for client-IP resolution. 0
+   * (default) trusts nothing — the only safe choice when the app is
+   * reachable directly. Set 1 behind a single proxy (Nginx Proxy Manager,
+   * Cloudflare Tunnel) so the login rate limiter keys on the real client.
+   */
+  trustProxyHops: number;
   /** Directory containing the web app's own pages and scripts. */
   staticDir: string;
   /** Directory containing the Design Kit v2 brand assets served under /assets. */
@@ -44,6 +51,16 @@ const DEFAULT_STUDIO_CORE_FILE = fileURLToPath(
 );
 
 const DEFAULT_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+
+/** 0 unless explicitly set; invalid values fail loudly rather than guessing. */
+function readTrustProxyHops(raw: string | undefined): number {
+  if (raw === undefined || raw.trim() === '') return 0;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0 || value > 2) {
+    throw new Error(`RG_TRUST_PROXY_HOPS must be an integer between 0 and 2, got "${raw}"`);
+  }
+  return value;
+}
 
 function parseFlag(value: string | undefined): boolean {
   if (value === undefined) return false;
@@ -82,6 +99,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WebConfig {
         ? { username, password }
         : undefined,
     migrationsDir: env.RG_MIGRATIONS_DIR ?? DEFAULT_MIGRATIONS_DIR,
+    trustProxyHops: readTrustProxyHops(env.RG_TRUST_PROXY_HOPS),
     staticDir: DEFAULT_STATIC_DIR,
     assetsDir: DEFAULT_ASSETS_DIR,
     studioCoreFile: DEFAULT_STUDIO_CORE_FILE,

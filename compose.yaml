@@ -2,8 +2,13 @@
 #
 # Usage:
 #   cp .env.example .env   # then edit the two required values below
-#   docker compose up
+#   docker compose up -d
 #   docker compose exec web node tools/seed-fixtures.cjs /app/data/studio.sqlite
+#
+# Behind Nginx Proxy Manager (recommended): do NOT publish ports. Put this
+# stack and NPM on one Docker network and forward the proxy host to
+# `web:8787` — the app is then unreachable directly (origin protection).
+# See docs/deployment-nginx-proxy-manager.md.
 #
 # No secrets belong in this file. All secrets stay in .env (gitignored).
 
@@ -16,10 +21,12 @@ services:
     environment:
       NODE_ENV: production
       RG_HOST: 0.0.0.0
-    ports:
-      # Host port maps to the same container port the app actually binds
-      # (RG_PORT from .env), so a custom RG_PORT keeps working.
-      - "${RG_PORT:-8787}:${RG_PORT:-8787}"
+      # One reverse proxy in front (NPM / Cloudflare Tunnel): the login rate
+      # limiter keys on the real client address, not the Docker gateway.
+      RG_TRUST_PROXY_HOPS: "1"
+    # No host port published: reach the app through the proxy only.
+    # For direct local testing run it outside Docker instead
+    # (`node --env-file-if-exists=.env apps/web/dist/web.js`).
     volumes:
       - studio-data:/app/data
     restart: unless-stopped

@@ -66,7 +66,9 @@ export function createAuthRouter({ db, config }: AuthRouterOptions): Router {
       return;
     }
 
-    const key = `${req.socket.remoteAddress ?? 'unknown'}|${username.toLowerCase()}`;
+    // req.ip honors `trust proxy` (0 by default), so a direct deployment
+    // still keys on the socket address and cannot be spoofed.
+    const key = `${req.ip ?? 'unknown'}|${username.toLowerCase()}`;
     const verdict = limiter.check(key);
     if (!verdict.allowed) {
       res.set('retry-after', String(Math.max(1, Math.ceil(verdict.retryAfterMs / 1000))));

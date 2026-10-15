@@ -29,6 +29,9 @@ export interface CreateAppOptions {
 export function createApp({ db, config }: CreateAppOptions): Express {
   const app = express();
   app.disable('x-powered-by');
+  // Only trust forwarded headers when the deployment says so — otherwise a
+  // directly reachable app would let clients spoof their own rate-limit key.
+  if (config.trustProxyHops > 0) app.set('trust proxy', config.trustProxyHops);
   app.use(securityHeaders);
   app.use(express.json({ limit: '64kb' }));
   app.use(sessionMiddleware(db));
