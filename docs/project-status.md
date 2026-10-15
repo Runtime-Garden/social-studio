@@ -16,14 +16,12 @@ links to executed evidence.
 | Coded | yes — immutable baseline commit `d2f202c` |
 | Tested (mock Canvas) | yes — `tests/render-smoke.cjs` (40 layouts × 16 formats × 2 themes; 14,336 text draw calls), `tests/series-smoke.cjs` (12 packs, committed examples verified) |
 | Tested (unit) | yes — `tests/unit/project-roundtrip.test.ts` (19 assertions incl. v1 import, malformed input, clamping) |
-| Tested (real browser) | yes — `tests/browser/*.spec.ts` on Chromium headless shell 156 (10 tests: 80-frame render sweep; live UI interactions; PNG/JSON/ZIP/JPEG/WebP/multi-size-bundle downloads validated by file signatures; **all 12 series packs applied through the UI with README frame counts**; **all 16 size presets rendered at exact README dimensions**; **image upload + crop-position change**; v1 import + reload persistence; network-blocked standalone) |
+| Tested (real browser) | yes — `tests/browser/*.spec.ts` on Chromium headless shell 156 + Firefox (25 tests: 80-frame render sweep; live UI interactions; builder-project import; PNG/JSON/ZIP/JPEG/WebP/multi-size-bundle downloads validated by file signatures; **all 12 series packs applied through the UI with README frame counts**; **all 16 size presets rendered at exact README dimensions**; **image upload + crop-position change**; v1 import + reload persistence; network-blocked standalone; **7 golden-image baselines × 2 engines with readable tolerances**) |
 | Visual evidence | `docs/evidence/p0/*.png` (real screenshots; standalone file:// render byte-identical to served render) |
 | Deployed | not deployed (by design; static folder/standalone only) |
 | Live-verified | n/a (no external service) |
 
-**Not yet verified (tracked for P1):** Firefox/Safari/WebKit, mobile viewports,
-pixel-tolerance golden-image regression (current browser checks assert
-distinctness and geometry, not visual baselines), accessibility audit.
+**Not yet verified (tracked for P1):** Safari/WebKit (blocked on this host: missing system libraries, no sudo — see below), mobile viewports, accessibility audit. Pixel-tolerance golden-image regression now exists (chromium + firefox, `docs/evidence/golden/`).
 
 ## v2 documentation gaps fixed in P0
 
@@ -74,6 +72,27 @@ Remaining P1 checklist: golden-image tolerance snapshots (next, per blueprint
 explicit schema modules + v1→v2 migration functions; browser coverage for
 undo/redo, large text and custom-dimension exports.
 
+Slice 3 (commit `8c2d3bd`): **deterministic golden-image snapshots**.
+
+- 7 frozen fixtures (`tests/fixtures/golden/`) rendered through the real
+  editor and pixel-compared against committed baselines
+  (`docs/evidence/golden/<fixture>.<engine>.png` + `manifest.json`).
+- Engine-specific baselines: chromium + firefox (WebKit cannot start on this
+  host — see environment note below); `npm run update:goldens` regenerates.
+- Readable failure diagnostics: changed-pixel count/ratio, max/mean channel
+  delta, changed-pixel bounding box, live-canvas attachment on failure.
+- Calibration evidence: chromium noise exactly 0 across runs; firefox has a
+  second stable glyph-AA state (~1,000 px = 0.07%, delta 68 → bound 96);
+  a deliberate one-word mutation measured 1.6% / delta 224 and was caught on
+  both engines (then reverted).
+
+**WebKit environment blocker:** `npx playwright install firefox webkit`
+downloads both, but WebKit refuses to start (missing system libraries,
+`--with-deps` needs sudo which this host does not grant). Chromium+Firefox
+run locally; CI installs chromium+firefox with dependencies. WebKit coverage
+becomes possible on CI or a host with install rights — tracked as an external
+environment limitation, not a code gap.
+
 ## v3 online workspace (blueprint phases P2–P6)
 
 | State | Value |
@@ -99,7 +118,10 @@ undo/redo, large text and custom-dimension exports.
 
 - WSL2 Linux (Playwright reports ubuntu24.04 fallback build of Chromium), Node
   v24.21.0, npm 11.19.0.
-- Playwright Chromium headless shell `156.0.8078.4` (playwright build v1248).
+- Playwright Chromium headless shell `156.0.8078.4` (playwright build v1248)
+  and Firefox (playwright build v1555). **WebKit does not start on this host**
+  (missing system libraries; `--with-deps` requires sudo, unavailable) — a
+  documented environment limitation. CI installs chromium+firefox with deps.
 - Note: Playwright **startup/teardown on this WSL mount is intermittently slow**
   (2–4 min wall for a run whose test bodies total ≈7 s); a reproducible
   environment artifact observed with and without debug tracing, not a test
@@ -113,8 +135,9 @@ npm run build:core   # esbuild packages/studio-core → dist/studio-core.js
 npm run check        # node --check studio.js
 npm run smoke        # mock-Canvas + series/pack + example-file verification
 npm run typecheck    # tsc --noEmit
-npm run test         # vitest: 26 unit assertions
+npm run test         # vitest: 47 unit assertions
 npm run build:standalone
-npm run test:browser # Playwright chromium, 10 tests
+npm run test:browser # Playwright: 18 chromium + 7 firefox golden tests
+npm run update:goldens            # regenerate golden baselines (+ manifest)
 node tools/capture-evidence.cjs  # regenerate docs/evidence/p0 screenshots
 ```

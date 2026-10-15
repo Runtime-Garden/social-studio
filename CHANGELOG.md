@@ -109,3 +109,30 @@ custom-dimension browser coverage.
   input; app state matches the project.
 - Full `npm run verify` green: 47 unit assertions, 11/11 Playwright,
   standalone artifact byte-identical.
+
+### P1 — Deterministic golden-image snapshots (commit `8c2d3bd`)
+
+**Added:**
+
+- `tests/browser/golden.spec.ts` + 7 frozen fixtures
+  (`tests/fixtures/golden/`) compared against engine-specific baselines in
+  `docs/evidence/golden/` (with a sha256 manifest).
+- `npm run update:goldens` (`tools/update-goldens.cjs`) regenerates baselines
+  for chromium and firefox.
+- Readable failure diagnostics: changed-pixel ratio, max/mean channel delta,
+  changed-pixel bounding box, live-render attachment; missing baselines fail
+  hard (no silent skips).
+
+**Calibrated tolerances (measured, documented in the spec):**
+
+- Chromium: exactly zero noise across repeated runs (≤0.2% area, delta ≤16).
+- Firefox: glyph edges occasionally rasterize in a second stable AA state
+  (~1,000 px ≈ 0.07%, delta 68; firefox delta bound 96).
+- A deliberate one-word title mutation measured 1.6% area / delta 224 and was
+  caught on both engines (mutation then reverted).
+
+**Not done / blocked:**
+
+- WebKit cannot start on the reference host (missing system libraries; no
+  sudo for `--with-deps`) — documented environment blocker; CI installs
+  chromium+firefox with dependencies.
