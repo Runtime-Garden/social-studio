@@ -64,6 +64,11 @@ export function findUserByUsername(db: StudioDatabase, username: string): UserRo
   return row ? map(row) : undefined;
 }
 
+export function findUserById(db: StudioDatabase, id: string): UserRow | undefined {
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as RawUser | undefined;
+  return row ? map(row) : undefined;
+}
+
 export function countUsers(db: StudioDatabase): number {
   const row = db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number };
   return row.n;

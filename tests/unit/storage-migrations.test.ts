@@ -52,15 +52,18 @@ afterEach(() => {
 });
 
 describe('migration runner', () => {
-  it('applies the initial migration to a fresh database and records it', () => {
+  it('applies the initial migrations to a fresh database and records them', () => {
     const db = openDatabase({ path: ':memory:' });
     const applied = applyMigrations(db, MIGRATIONS_DIR);
-    expect(applied).toEqual(['0001_init']);
+    expect(applied).toEqual(['0001_init', '0002_sessions_csrf']);
 
     const rows = db
       .prepare('SELECT version, name FROM schema_migrations ORDER BY version')
       .all() as Array<{ version: number; name: string }>;
-    expect(rows).toEqual([{ version: 1, name: '0001_init' }]);
+    expect(rows).toEqual([
+      { version: 1, name: '0001_init' },
+      { version: 2, name: '0002_sessions_csrf' },
+    ]);
 
     const tables = (
       db
@@ -85,6 +88,17 @@ describe('integrity invariants', () => {
     applyMigrations(db, MIGRATIONS_DIR);
     return db;
   }
+
+  it('binds a non-null CSRF token to every session row (0002)', () => {
+    const db = freshDb();
+    const columns = db.prepare('PRAGMA table_info(sessions)').all() as Array<{
+      name: string;
+      notnull: number;
+    }>;
+    const csrf = columns.find((column) => column.name === 'csrf_token');
+    expect(csrf).toBeDefined();
+    expect(csrf?.notnull).toBe(1);
+  });
 
   it('enforces foreign keys', () => {
     const db = freshDb();

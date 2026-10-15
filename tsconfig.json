@@ -16,6 +16,7 @@
   },
   "include": [
     "packages/**/*.ts",
+    "apps/**/*.ts",
     "tests/**/*.ts",
     "tools/**/*.ts",
     "vitest.config.ts",

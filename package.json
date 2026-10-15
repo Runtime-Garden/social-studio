@@ -14,17 +14,23 @@
     "test:browser": "playwright test",
     "typecheck": "tsc --noEmit",
     "build:core": "esbuild packages/studio-core/src/index.ts --bundle --format=iife --global-name=RGStudioCore --outfile=packages/studio-core/dist/studio-core.js",
+    "build:web": "esbuild apps/web/src/main.ts --bundle --format=esm --platform=node --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=apps/web/dist/web.js",
+    "serve:web": "npm run build:web && node apps/web/dist/web.js",
     "build:standalone": "node tools/build-standalone.cjs",
     "update:goldens": "node tools/update-goldens.cjs",
     "refresh:examples": "node tools/refresh-examples.cjs",
     "serve": "node tools/serve.cjs",
-    "verify": "npm run build:core && npm run check && npm run smoke && npm run typecheck && npm run test && npm run build:standalone && npm run test:browser"
+    "verify": "npm run build:core && npm run build:web && npm run check && npm run smoke && npm run typecheck && npm run test && npm run build:standalone && npm run test:browser"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
+    "@types/express": "^5.0.6",
     "@types/node": "^26.6.5",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.4"
+  },
+  "dependencies": {
+    "express": "^5.3.0"
   }
 }

@@ -15,6 +15,7 @@ import { applyMigrations } from '../../packages/storage/src/migrate.js';
 import {
   createUser,
   countUsers,
+  findUserById,
   findUserByUsername,
 } from '../../packages/storage/src/repos/users.js';
 import {
@@ -55,6 +56,18 @@ describe('users', () => {
     createUser(db, { username: 'owner', passwordHash: 'a' });
     expect(() => createUser(db, { username: 'owner', passwordHash: 'b' })).toThrow(/UNIQUE/i);
   });
+
+  it('finds users by id and exposes the disabled marker', () => {
+    const user = createUser(db, { username: 'owner', passwordHash: 'h' });
+    expect(findUserById(db, user.id)?.username).toBe('owner');
+    expect(findUserById(db, 'missing')).toBeUndefined();
+
+    db.prepare('UPDATE users SET disabled_at = ? WHERE id = ?').run(
+      '2026-10-15T00:00:00.000Z',
+      user.id,
+    );
+    expect(findUserById(db, user.id)?.disabledAt).toBe('2026-10-15T00:00:00.000Z');
+  });
 });
 
 describe('sessions', () => {
@@ -81,6 +94,18 @@ describe('sessions', () => {
     expect(revokeSession(db, second.token, { now: 2_000_100 })).toBe(true);
     expect(findActiveSession(db, second.token, { now: 2_000_200 })).toBeNull();
     expect(revokeSession(db, 'not-a-token', { now: 2_000_300 })).toBe(false);
+  });
+
+  it('issues a session-bound CSRF token stored with the session', () => {
+    const user = createUser(db, { username: 'owner', passwordHash: 'x' });
+    const { token, csrfToken } = createSession(db, user.id, { now: 1_000_000, ttlMs: 60_000 });
+    expect(csrfToken).toMatch(/^[A-Za-z0-9_-]{40,}$/);
+    expect(csrfToken).not.toBe(token);
+
+    const row = db.prepare('SELECT csrf_token FROM sessions').get() as { csrf_token: string };
+    expect(row.csrf_token).toBe(csrfToken);
+
+    expect(findActiveSession(db, token, { now: 1_030_000 })?.csrfToken).toBe(csrfToken);
   });
 
   it('updates last activity when a session is used', () => {
