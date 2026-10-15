@@ -17,6 +17,7 @@ import { createAuthRouter } from './routes/auth.js';
 import { createContentRouter } from './routes/content.js';
 import { createHealthRouter } from './routes/health.js';
 import { createOpsRouter } from './routes/ops.js';
+import { createScheduleRouter } from './routes/schedule.js';
 import { createAssetRouter, createPagesRouter } from './routes/pages.js';
 import { createProjectsRouter } from './routes/projects.js';
 
@@ -37,6 +38,7 @@ export function createApp({ db, config }: CreateAppOptions): Express {
   app.use('/api/v1/projects', createProjectsRouter({ db }));
   app.use('/api/v1/content', createContentRouter({ db }));
   app.use('/api/v1/ops', createOpsRouter({ db }));
+  app.use('/api/v1/schedule', createScheduleRouter({ db }));
 
   app.use(createPagesRouter(config));
   app.use(express.static(config.staticDir, { index: false }));
