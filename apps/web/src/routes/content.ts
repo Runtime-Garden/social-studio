@@ -10,6 +10,8 @@ import { Router, type Request, type Response } from 'express';
 import type { StudioDatabase } from '../../../../packages/storage/src/db.js';
 import { appendAuditEvent } from '../../../../packages/storage/src/repos/audit.js';
 import {
+  APPROVAL_POLICY_VERSION,
+  currentVariantSubject,
   getContentItem,
   getVariant,
   latestApprovalForVariant,
@@ -273,9 +275,6 @@ export function createContentRouter({ db }: { db: StudioDatabase }): Router {
   return router;
 }
 
-/** Snapshot policy version pinned for slice-4 fixture approvals. */
-const APPROVAL_POLICY_VERSION = 'p2-slice-4';
-
 function publicApproval(approval: {
   id: string;
   variantRevision: number;
@@ -293,7 +292,8 @@ function publicApproval(approval: {
 /**
  * Reconstructs the approval subject from current DB state so `latest`
  * validity reflects live reality: same derivation as approval time means
- * any text/revision drift fails verification.
+ * any text/revision drift fails verification. Single source lives in the
+ * storage layer (`currentVariantSubject`).
  */
 function subjectFor(
   db: StudioDatabase,
@@ -301,17 +301,18 @@ function subjectFor(
   channelId: string,
   override?: { text: string; revision: number; scheduledAt: string | null; contentItemId: string },
 ): ApprovalSubject | null {
-  const variant = override ?? getVariant(db, variantId);
-  if (!variant) return null;
-  return {
-    variantId,
-    variantRevision: variant.revision,
-    channelId,
-    text: variant.text,
-    sourceIds: sourceIdsForContent(db, variant.contentItemId),
-    orderedAssetHashes: [],
-    targetPublishAtUtc: variant.scheduledAt,
-    formatMetadata: {},
-    policyVersion: APPROVAL_POLICY_VERSION,
-  };
+  if (override) {
+    return {
+      variantId,
+      variantRevision: override.revision,
+      channelId,
+      text: override.text,
+      sourceIds: sourceIdsForContent(db, override.contentItemId),
+      orderedAssetHashes: [],
+      targetPublishAtUtc: override.scheduledAt,
+      formatMetadata: {},
+      policyVersion: APPROVAL_POLICY_VERSION,
+    };
+  }
+  return currentVariantSubject(db, variantId, channelId);
 }

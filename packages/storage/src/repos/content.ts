@@ -340,6 +340,58 @@ export function sourceIdsForContent(db: StudioDatabase, contentItemId: string): 
   return rows.map((r) => r.id).filter((id) => id !== null);
 }
 
+export function setVariantSchedule(
+  db: StudioDatabase,
+  id: string,
+  scheduledAt: string | null,
+  { now }: { now?: number } = {},
+): void {
+  db.prepare('UPDATE platform_variants SET scheduled_at = ?, updated_at = ? WHERE id = ?').run(
+    scheduledAt,
+    nowIso(now),
+    id,
+  );
+}
+
+export interface VariantSubject {
+  variantId: string;
+  variantRevision: number;
+  channelId: string;
+  text: string;
+  sourceIds: string[];
+  orderedAssetHashes: string[];
+  targetPublishAtUtc: string | null;
+  formatMetadata: Record<string, unknown>;
+  policyVersion: string;
+}
+
+/** Approval policy version pinned for fixture approvals. */
+export const APPROVAL_POLICY_VERSION = 'p2-slice-4';
+
+/**
+ * Derives the approval subject from live DB state (same derivation the
+ * API used at approval time): any text/revision drift fails verification.
+ */
+export function currentVariantSubject(
+  db: StudioDatabase,
+  variantId: string,
+  channelId: string,
+): VariantSubject | null {
+  const variant = getVariant(db, variantId);
+  if (!variant) return null;
+  return {
+    variantId,
+    variantRevision: variant.revision,
+    channelId,
+    text: variant.text,
+    sourceIds: sourceIdsForContent(db, variant.contentItemId),
+    orderedAssetHashes: [],
+    targetPublishAtUtc: variant.scheduledAt,
+    formatMetadata: {},
+    policyVersion: APPROVAL_POLICY_VERSION,
+  };
+}
+
 export interface ApprovalRow {
   id: string;
   variantId: string;
